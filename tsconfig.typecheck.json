@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@blunderon/board": ["./src/index.ts"],
+      "@blunderon/board/core": ["./src/core/index.ts"],
+      "@blunderon/board/dom": ["./src/dom/index.ts"],
+      "@blunderon/board/rules": ["./src/rules/index.ts"]
+    }
+  }
+}

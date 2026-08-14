@@ -1,0 +1,58 @@
+{
+  "name": "@blunderon/board",
+  "version": "0.1.0",
+  "description": "Dependency-free chess rules and an accessible, themeable board",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rules": {
+      "types": "./dist/rules/index.d.ts",
+      "import": "./dist/rules/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./dom": {
+      "types": "./dist/dom/index.d.ts",
+      "import": "./dist/dom/index.js"
+    }
+  },
+  "files": [
+    "dist/*.d.ts",
+    "dist/*.d.ts.map",
+    "dist/*.js",
+    "dist/*.js.map",
+    "dist/core",
+    "dist/dom",
+    "dist/examples",
+    "dist/pieces",
+    "dist/rules",
+    "examples",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "examples": "bun run build && bun run scripts/serve-example.ts",
+    "test": "bun test src",
+    "test:e2e": "bun run build && playwright test",
+    "verify:package": "bun run build && bun run scripts/verify-package.ts",
+    "typecheck": "tsc --noEmit --project tsconfig.typecheck.json && mancha check examples/*/index.html",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "ci": "bun run lint && bun run typecheck && bun test src && bun run build && bun run scripts/verify-package.ts && playwright test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.10",
+    "@playwright/test": "1.58.2",
+    "@types/bun": "1.3.5",
+    "mancha": "0.23.1",
+    "typescript": "5.9.3"
+  }
+}

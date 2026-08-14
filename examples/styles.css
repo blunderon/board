@@ -1,0 +1,205 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #212720;
+  background: #ece7dc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  background: radial-gradient(circle at 12% 4%, rgb(255 255 255 / 70%), transparent 28rem), #ece7dc;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 76rem;
+  margin: auto;
+  padding: 0 clamp(1rem, 5vw, 4rem);
+}
+
+header,
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 5rem;
+  color: #737368;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wordmark {
+  color: #212720;
+  font-family: Georgia, serif;
+  font-size: 1.2rem;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-transform: none;
+}
+
+.hero {
+  padding: clamp(3rem, 9vh, 6rem) 0 clamp(2.5rem, 6vh, 4.5rem);
+}
+
+.eyebrow,
+.card p {
+  margin: 0;
+  color: #8f6839;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0.6rem 0 1rem;
+  font-family: Georgia, serif;
+  font-size: clamp(2.7rem, 6.5vw, 5.8rem);
+  font-weight: 500;
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+h1 em {
+  color: #a45935;
+  font-weight: 500;
+}
+
+.intro {
+  max-width: 44rem;
+  margin: 0;
+  color: #656a62;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  line-height: 1.6;
+}
+
+.intro code {
+  color: #34483a;
+  font-weight: 700;
+}
+
+.examples {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+.card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 19rem;
+  padding: 1.25rem;
+  border: 1px solid rgb(46 53 45 / 15%);
+  border-radius: 0.9rem;
+  color: #252b24;
+  background: rgb(255 254 250 / 72%);
+  box-shadow: 0 1rem 3rem rgb(66 54 37 / 7%);
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.card:hover {
+  transform: translateY(-0.35rem);
+  box-shadow: 0 1.4rem 3rem rgb(66 54 37 / 14%);
+}
+
+.card:focus-visible {
+  outline: 0.2rem solid #a45935;
+  outline-offset: 0.2rem;
+}
+
+.number {
+  justify-self: end;
+  color: #a4a296;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.card h2 {
+  margin: 0.45rem 0 0.7rem;
+  font-family: Georgia, serif;
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  font-weight: 500;
+}
+
+.description {
+  color: #6a6d66;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.arrow {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: #34483a;
+  font-size: 1.2rem;
+}
+
+.bot .arrow {
+  color: #2d211d;
+  background: #e4b36f;
+}
+
+.puzzles .arrow {
+  background: #315a66;
+}
+
+footer {
+  gap: 1rem;
+  margin-top: auto;
+}
+
+footer code {
+  color: #4d574d;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 760px) {
+  .examples {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    min-height: 12rem;
+  }
+
+  .card > div {
+    align-self: end;
+  }
+
+  .arrow {
+    align-self: end;
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 480px) {
+  header span,
+  footer code {
+    display: none;
+  }
+
+  .hero {
+    padding-top: 2.5rem;
+  }
+}

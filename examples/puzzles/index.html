@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Build chess puzzles with @blunderon/board">
+    <style id="mancha-cloak">
+      /* biome-ignore lint/complexity/noImportantStyles: required by Mancha's ESM cloak */
+      #app { opacity: 0 !important; }
+    </style>
+    <link rel="stylesheet" href="./styles.css">
+    <title>Puzzles · Blunder On examples</title>
+  </head>
+  <body>
+    <main id="app">
+      <nav aria-label="Examples">
+        <a class="brand" href="../../">Blunder On</a>
+        <div class="tabs">
+          <a href="../analysis/">Analysis</a>
+          <a href="../bot/">Bot</a>
+          <a aria-current="page" href="../puzzles/">Puzzles</a>
+        </div>
+      </nav>
+
+      <section class="workspace">
+        <aside>
+          <p class="eyebrow">Example 03 · Authored lines</p>
+          <span class="difficulty">Tactic · Mate in 2</span>
+          <h1>Clear the back rank.</h1>
+          <p class="intro">Two first moves work. The puzzle controller matches either branch, plays Black's reply, and keeps wrong moves off the board.</p>
+
+          <div class="feedback" :attr:data-tone="tone" role="status">
+            <span aria-hidden="true" :text="tone === 'good' ? '✓' : tone === 'bad' ? '×' : '◆'"></span>
+            <p :text="feedback">White to move. Find the forcing sequence.</p>
+          </div>
+
+          <ol class="solution" aria-label="Moves played">
+            <li :for="move in moves" :key="move.id">
+              <span :text="move.id + 1"></span><strong :text="move.san"></strong>
+            </li>
+          </ol>
+
+          <div class="actions">
+            <button type="button" :on:click="hint()" :prop:disabled="complete">Show a hint</button>
+            <button type="button" :on:click="reset()">Try again</button>
+          </div>
+          <p class="attempts"><span :text="attempts"></span> incorrect attempts</p>
+
+          <div class="lesson">
+            <strong>Authoring pattern</strong>
+            <code>tree.addLine(['Rxe8+', 'Rxe8', 'Qxe8#'])</code>
+            <p>Add another line to accept an alternative solution. The authored tree stays unchanged across attempts.</p>
+          </div>
+        </aside>
+
+        <div class="board-column">
+          <div class="turn-label"><span>White to move</span><strong>Find the best move</strong></div>
+          <div id="board" aria-label="Chess puzzle"></div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

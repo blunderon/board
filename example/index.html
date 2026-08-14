@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Blunder On board example</title>
+    <style>
+      :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background: radial-gradient(circle at top, #f7f1e7, #d9cab7 68%, #cbb79e);
+        color: #29231f;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(18rem, 42rem) minmax(16rem, 22rem);
+        gap: clamp(1.25rem, 4vw, 3.5rem);
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: clamp(1rem, 4vw, 3rem);
+      }
+      #board { width: min(78vh, 100%); }
+      aside {
+        overflow: hidden;
+        border: 1px solid rgb(74 54 42 / 20%);
+        border-radius: 1rem;
+        background: rgb(255 252 247 / 82%);
+        box-shadow: 0 1rem 3rem rgb(66 44 31 / 14%);
+      }
+      header { padding: 1.25rem 1.35rem 1rem; background: #3e5546; color: white; }
+      h1 { margin: 0; font-family: Georgia, serif; font-size: 1.65rem; font-weight: 600; }
+      #status { margin: 0.45rem 0 0; color: #dce8de; }
+      .controls { display: grid; gap: 0.8rem; padding: 1.25rem 1.35rem; }
+      form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+      input, button {
+        min-height: 2.75rem;
+        border: 1px solid #a89684;
+        border-radius: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        font: inherit;
+      }
+      button { background: #f3eadf; cursor: pointer; font-weight: 650; }
+      button:hover { background: #e7d9c8; }
+      .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      #error { min-height: 1.25rem; margin: 0; color: #a12424; font-size: 0.9rem; }
+      .history { border-top: 1px solid #ddd0c2; padding: 1rem 1.35rem 1.3rem; }
+      .history h2 { margin: 0 0 0.6rem; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; }
+      #moves { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.25rem 1.2rem; max-height: 14rem; margin: 0; padding-left: 1.8rem; overflow: auto; }
+      @media (max-width: 760px) {
+        main { grid-template-columns: minmax(0, 38rem); align-content: start; }
+        #board { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="board" aria-label="Playable chess board"></div>
+      <aside>
+        <header>
+          <h1>Local chess board</h1>
+          <p id="status">White to move</p>
+        </header>
+        <section class="controls" aria-label="Game controls">
+          <form id="move-form">
+            <input id="move" aria-label="Move in SAN or UCI" autocomplete="off" placeholder="e4 or e2e4">
+            <button type="submit">Play</button>
+          </form>
+          <p id="error" role="alert"></p>
+          <div class="actions">
+            <button id="undo" type="button">Undo</button>
+            <button id="new-game" type="button">New game</button>
+          </div>
+        </section>
+        <section class="history">
+          <h2>Moves</h2>
+          <ol id="moves"></ol>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

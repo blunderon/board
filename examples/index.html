@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Interactive examples for the Blunder On board library">
+    <link rel="stylesheet" href="./styles.css">
+    <title>Blunder On Board · Examples</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a class="wordmark" href="./">Blunder On</a>
+        <span>Board library examples</span>
+      </header>
+
+      <section class="hero">
+        <p class="eyebrow">Three complete integrations</p>
+        <h1>Build the chess experience,<br><em>keep the rules dependable.</em></h1>
+        <p class="intro">Small, independent examples showing how an external application can use <code>@blunderon/board</code> for analysis, opponents, and tactical training.</p>
+      </section>
+
+      <section class="examples" aria-label="Examples">
+        <a class="card analysis" href="./examples/analysis/">
+          <span class="number">01</span>
+          <div>
+            <p>Variation trees</p>
+            <h2>Game analysis</h2>
+            <span class="description">Navigate an annotated PGN, create branches, and add a validated UCI engine line.</span>
+          </div>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a class="card bot" href="./examples/bot/">
+          <span class="number">02</span>
+          <div>
+            <p>Opponent policy</p>
+            <h2>Play a bot</h2>
+            <span class="description">Schedule an asynchronous opponent while the library owns moves and outcomes.</span>
+          </div>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a class="card puzzles" href="./examples/puzzles/">
+          <span class="number">03</span>
+          <div>
+            <p>Authored lines</p>
+            <h2>Solve puzzles</h2>
+            <span class="description">Match branching solutions, reject mistakes, play replies, and track completion.</span>
+          </div>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+      </section>
+
+      <footer>
+        <span>Dependency-free chess rules and board rendering</span>
+        <code>bun add @blunderon/board</code>
+      </footer>
+    </main>
+  </body>
+</html>

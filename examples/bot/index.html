@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Play a chess bot with @blunderon/board">
+    <style id="mancha-cloak">
+      /* biome-ignore lint/complexity/noImportantStyles: required by Mancha's ESM cloak */
+      #app { opacity: 0 !important; }
+    </style>
+    <link rel="stylesheet" href="./styles.css">
+    <title>Play a bot · Blunder On examples</title>
+  </head>
+  <body>
+    <main id="app">
+      <nav aria-label="Examples">
+        <a class="brand" href="../../">Blunder On</a>
+        <div class="tabs">
+          <a href="../analysis/">Analysis</a>
+          <a aria-current="page" href="../bot/">Bot</a>
+          <a href="../puzzles/">Puzzles</a>
+        </div>
+      </nav>
+
+      <section class="workspace">
+        <div class="board-wrap">
+          <div class="opponent player-card">
+            <span class="avatar" aria-hidden="true">♞</span>
+            <div><strong>Juniper</strong><small>Deterministic demo bot</small></div>
+            <span class="pulse" :class="thinking ? 'active' : ''" aria-hidden="true"></span>
+          </div>
+          <div id="board" aria-label="Game against a bot"></div>
+          <div class="player-card">
+            <span class="avatar human" aria-hidden="true">♙</span>
+            <div><strong>You</strong><small>White</small></div>
+          </div>
+        </div>
+
+        <aside>
+          <p class="eyebrow">Example 02 · Opponent policy</p>
+          <h1>A tiny bot, a complete game.</h1>
+          <div class="status-row">
+            <span class="status-dot" :class="thinking ? 'thinking' : ''"></span>
+            <strong id="status" :text="status">Your move</strong>
+          </div>
+
+          <section class="history" aria-label="Move history">
+            <div class="history-heading">
+              <span>Moves</span>
+              <span :text="moves.length + ' plies'"></span>
+            </div>
+            <ol>
+              <li :for="move in moves" :key="move.id" :class="move.side">
+                <span :show="move.side === 'white'" :text="move.number + '.'"></span>
+                <strong :text="move.san"></strong>
+              </li>
+            </ol>
+            <p class="empty" :show="moves.length === 0">Play any legal move to begin.</p>
+          </section>
+
+          <p class="error" role="alert" :text="error"></p>
+          <button class="primary" type="button" :on:click="newGame()">New game</button>
+          <div class="lesson">
+            <span>What this demonstrates</span>
+            <p>The app disables input while its opponent chooses a move, then sends that move back through <code>controller.move()</code>.</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

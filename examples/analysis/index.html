@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Analyze a chess game with @blunderon/board">
+    <style id="mancha-cloak">
+      /* biome-ignore lint/complexity/noImportantStyles: required by Mancha's ESM cloak */
+      #app { opacity: 0 !important; }
+    </style>
+    <link rel="stylesheet" href="./styles.css">
+    <title>Game analysis · Blunder On examples</title>
+  </head>
+  <body>
+    <main id="app">
+      <nav aria-label="Examples">
+        <a class="brand" href="../../">Blunder On</a>
+        <div class="tabs">
+          <a aria-current="page" href="../analysis/">Analysis</a>
+          <a href="../bot/">Bot</a>
+          <a href="../puzzles/">Puzzles</a>
+        </div>
+      </nav>
+
+      <section class="workspace">
+        <div class="board-column">
+          <p class="eyebrow">Example 01 · Variation trees</p>
+          <h1>Explore every <em>what if?</em></h1>
+          <p class="lede">Move on the board to create a branch. Right-drag an arrow or right-click a square to annotate the current position.</p>
+          <div id="board" aria-label="Analysis board"></div>
+        </div>
+
+        <aside>
+          <div class="panel-heading">
+            <div>
+              <span class="label">Position</span>
+              <strong :text="status">Starting position</strong>
+            </div>
+            <div class="evaluation" :text="evaluation">Not evaluated</div>
+          </div>
+
+          <section class="move-card" aria-label="Current line">
+            <span class="label">Current line</span>
+            <ol class="moves">
+              <li :for="move in moves" :key="move.id">
+                <span :text="move.id + 1"></span>
+                <strong :text="move.san"></strong>
+              </li>
+            </ol>
+            <p class="empty" :show="moves.length === 0">No moves yet.</p>
+          </section>
+
+          <section class="continuations" :show="variations.length > 1">
+            <span class="label">Continuations</span>
+            <div class="variation-list">
+              <button :for="variation in variations" :key="variation.id" :on:click="forward(variation.id)" type="button" :text="variation.san"></button>
+            </div>
+          </section>
+
+          <form class="move-form" :on:submit="playMove()">
+            <label for="move">Play SAN or UCI</label>
+            <div>
+              <input id="move" :bind="moveInput" autocomplete="off" placeholder="c5 or c7c5">
+              <button class="compact" type="submit">Add</button>
+            </div>
+            <p class="error" role="alert" :text="error"></p>
+          </form>
+
+          <div class="actions">
+            <button type="button" :on:click="back()" :prop:disabled="!canBack">← Previous</button>
+            <button type="button" :on:click="forward()" :prop:disabled="!canForward">Next →</button>
+          </div>
+          <button class="primary" type="button" :on:click="addEngineLine()" :prop:disabled="analyzing" :text="analyzing ? 'Analyzing…' : 'Add sample engine line'"></button>
+          <button class="text-button" type="button" :on:click="reset()">Reset example</button>
+
+          <p class="note"><strong>Integration boundary:</strong> your engine returns a UCI principal variation; <code>addUci()</code> validates and stores it.</p>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
