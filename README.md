@@ -58,7 +58,8 @@ chess.destroy();
 ```
 
 The same person can move both colors. Click/tap, drag, keyboard input, castling, en passant, and a
-built-in promotion picker all go through the same legal-move path.
+built-in promotion picker all go through the same legal-move path. Dragging marks the exact legal
+drop square; touch feedback stays lifted above the finger.
 
 ## Rules without a board
 

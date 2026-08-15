@@ -73,6 +73,7 @@ class DomBoard implements BoardController {
   private readonly frame: HTMLElement;
   private readonly grid: HTMLElement;
   private readonly annotations: SVGSVGElement;
+  private readonly dragTargetHint: HTMLElement;
   private readonly ghost: HTMLImageElement;
   private readonly promotion: HTMLElement;
   private readonly live: HTMLElement;
@@ -86,6 +87,7 @@ class DomBoard implements BoardController {
   private suppressClick = false;
   private cancelPendingPromotion: (() => void) | null = null;
   private annotationFrom: Square | null = null;
+  private dragTarget: Square | null = null;
 
   constructor(element: HTMLElement, options: BoardOptions) {
     this.state = stateFromOptions(options);
@@ -103,6 +105,8 @@ class DomBoard implements BoardController {
     this.annotations.classList.add('annotations');
     this.annotations.setAttribute('viewBox', '0 0 8 8');
     this.annotations.setAttribute('aria-hidden', 'true');
+    this.dragTargetHint = elementOf('div', 'drag-target');
+    this.dragTargetHint.setAttribute('aria-hidden', 'true');
     this.ghost = document.createElement('img');
     this.ghost.className = 'ghost';
     this.ghost.alt = '';
@@ -111,7 +115,14 @@ class DomBoard implements BoardController {
     this.live = elementOf('div', 'sr-only');
     this.live.setAttribute('aria-live', 'polite');
 
-    this.frame.append(this.grid, this.annotations, this.ghost, this.promotion, this.live);
+    this.frame.append(
+      this.grid,
+      this.dragTargetHint,
+      this.annotations,
+      this.ghost,
+      this.promotion,
+      this.live,
+    );
     this.shadow.append(style, this.frame);
     this.bindEvents();
     this.renderGrid();
@@ -200,7 +211,8 @@ class DomBoard implements BoardController {
     this.applyTheme();
     this.renderAnnotations();
     const selected = this.selection.square;
-    const targets = selected ? (this.state.legalMoves.get(selected) ?? []) : [];
+    const moveSource = selected ?? (this.drag.dragging ? this.drag.from : null);
+    const targets = moveSource ? (this.state.legalMoves.get(moveSource) ?? []) : [];
     const checkedKing = this.state.checkedKing;
 
     for (const [square, button] of this.squares) {
@@ -233,6 +245,7 @@ class DomBoard implements BoardController {
       button.dataset.empty = String(piece === null);
       button.dataset.movable = String(!this.state.disabled && this.state.legalMoves.has(square));
       button.dataset.dragSource = String(this.drag.dragging && this.drag.from === square);
+      button.dataset.dropTarget = String(this.dragTarget === square);
       button.dataset.legalDestination = targets.includes(square)
         ? piece
           ? 'occupied'
@@ -398,10 +411,13 @@ class DomBoard implements BoardController {
     this.ghost.style.cssText = ghostTransform(
       { x: event.clientX, y: event.clientY },
       { left: box.left, top: box.top, size: box.width },
+      event.pointerType,
     );
     const piece = this.drag.from ? this.pieces.get(this.drag.from) : null;
     if (piece) this.ghost.src = this.state.theme.pieces(piece);
     this.frame.dataset.dragging = 'true';
+    this.frame.dataset.dragPointer = event.pointerType;
+    this.updateDragTarget(event);
     this.patch();
   }
 
@@ -431,9 +447,35 @@ class DomBoard implements BoardController {
 
   private cancelDrag(): void {
     this.drag.cancel();
+    this.dragTarget = null;
     this.frame.dataset.dragging = 'false';
+    delete this.frame.dataset.dragPointer;
+    this.dragTargetHint.removeAttribute('style');
     this.ghost.removeAttribute('style');
     this.patch();
+  }
+
+  private updateDragTarget(event: PointerEvent): void {
+    const from = this.drag.from;
+    const hit = this.shadow.elementFromPoint(event.clientX, event.clientY);
+    const hovered = squareFromElement(hit);
+    const target =
+      from && hovered && this.state.legalMoves.get(from)?.includes(hovered) ? hovered : null;
+    this.dragTarget = target;
+    if (!target) {
+      this.dragTargetHint.removeAttribute('style');
+      return;
+    }
+
+    const frameBox = this.frame.getBoundingClientRect();
+    const targetBox = this.squares.get(target)?.getBoundingClientRect();
+    if (!targetBox) return;
+    this.dragTargetHint.style.cssText = [
+      `left: ${(targetBox.left - frameBox.left - targetBox.width / 2).toFixed(2)}px`,
+      `top: ${(targetBox.top - frameBox.top - targetBox.height / 2).toFixed(2)}px`,
+      `width: ${(targetBox.width * 2).toFixed(2)}px`,
+      `height: ${(targetBox.height * 2).toFixed(2)}px`,
+    ].join('; ');
   }
 
   private async activate(square: Square): Promise<void> {

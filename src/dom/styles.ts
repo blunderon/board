@@ -10,7 +10,7 @@ export const BOARD_STYLES = `
 
   .frame {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     width: 100%;
     aspect-ratio: 1;
     border: 0.375rem solid #3b2922;
@@ -23,6 +23,7 @@ export const BOARD_STYLES = `
 
   .grid {
     display: grid;
+    overflow: hidden;
     width: 100%;
     height: 100%;
     grid-template-rows: repeat(8, 1fr);
@@ -60,6 +61,10 @@ export const BOARD_STYLES = `
   .square.last-move { --square: color-mix(in srgb, var(--board-last) 64%, var(--base)); }
   .square.selected { box-shadow: inset 0 0 0 0.34rem var(--board-selected); }
   .square.check { --square: var(--board-check); }
+  .square[data-drop-target='true'] {
+    z-index: 4;
+    box-shadow: inset 0 0 0 0.34rem var(--board-legal);
+  }
 
   .square:focus-visible {
     z-index: 4;
@@ -77,6 +82,17 @@ export const BOARD_STYLES = `
 
   .square[data-empty='true'] .piece { visibility: hidden; }
   .square[data-drag-source='true'] .piece { opacity: 0.18; }
+
+  .drag-target {
+    position: absolute;
+    z-index: 1;
+    display: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--board-legal) 28%, transparent);
+    pointer-events: none;
+  }
+
+  .frame[data-dragging='true'][data-drag-pointer='touch'] .drag-target[style] { display: block; }
 
   .square[data-legal-destination='empty']::after,
   .square[data-legal-destination='occupied']::after {

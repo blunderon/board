@@ -87,6 +87,60 @@ test('drags through the same move path as click and keyboard', async ({ page }) 
   await expect(page.locator('#moves li')).toHaveText(['e4']);
 });
 
+test('marks the exact legal square under a drag at square boundaries', async ({ page }) => {
+  const from = await square(page, 'e2').boundingBox();
+  const upper = await square(page, 'e4').boundingBox();
+  const lower = await square(page, 'e3').boundingBox();
+  if (!from || !upper || !lower) throw new Error('expected visible drag squares');
+
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(upper.x + upper.width / 2, upper.y + upper.height - 1);
+  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'true');
+  await expect(square(page, 'e3')).toHaveAttribute('data-drop-target', 'false');
+
+  await page.mouse.move(lower.x + lower.width / 2, lower.y + 1);
+  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'false');
+  await expect(square(page, 'e3')).toHaveAttribute('data-drop-target', 'true');
+  await page.mouse.up();
+
+  await expect(square(page, 'e3')).toHaveAttribute('aria-label', 'e3, white pawn');
+  await expect(page.locator('#moves li')).toHaveText(['e3']);
+});
+
+test('keeps touch drag feedback visible above the finger and marks the drop square', async ({
+  page,
+}) => {
+  const from = await square(page, 'e2').boundingBox();
+  const to = await square(page, 'e4').boundingBox();
+  if (!from || !to) throw new Error('expected visible drag squares');
+  const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+  const destination = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+  const cdp = await page.context().newCDPSession(page);
+
+  await cdp.send('Input.dispatchTouchEvent', {
+    touchPoints: [start],
+    type: 'touchStart',
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    touchPoints: [destination],
+    type: 'touchMove',
+  });
+
+  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'true');
+  const frame = await page.locator('#board .frame').boundingBox();
+  const ghost = await page.locator('#board .ghost').boundingBox();
+  const target = await page.locator('#board .drag-target').boundingBox();
+  if (!frame || !ghost || !target) throw new Error('expected visible touch feedback');
+  expect(ghost.width).toBeCloseTo((frame.width / 8) * 1.5, 0);
+  expect(ghost.y + ghost.height).toBeLessThan(destination.y);
+  expect(target.width).toBeCloseTo(to.width * 2, 0);
+
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
+  await expect(page.locator('#board .drag-target')).toBeHidden();
+  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+});
+
 test('does not restore the drag source before the controlled move callback', async ({ page }) => {
   await page.evaluate(() => {
     const scope = window as typeof window & {

@@ -1,5 +1,14 @@
 import { expect, test } from 'bun:test';
-import { DragSession } from './drag.js';
+import { DragSession, ghostTransform } from './drag.js';
+
+test('lifts and enlarges a touch ghost without moving its drop point', () => {
+  const board = { left: 0, size: 160, top: 0 };
+
+  expect(ghostTransform({ x: 80, y: 80 }, board)).toBe('transform: translate(70.00px, 70.00px)');
+  expect(ghostTransform({ x: 80, y: 80 }, board, 'touch')).toBe(
+    'width: 30.00px; height: 30.00px; transform: translate(65.00px, 45.00px)',
+  );
+});
 
 test('distinguishes a tap from a drag and cancels cleanly', () => {
   const drag = new DragSession();

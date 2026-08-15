@@ -22,12 +22,18 @@ function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** Positions a one-square ghost with its center under the pointer. */
-export function ghostTransform(pointer: Point, board: BoardBox): string {
-  const half = board.size / 16;
-  const x = pointer.x - board.left - half;
-  const y = pointer.y - board.top - half;
-  return `transform: translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+/** Positions a drag ghost while keeping touch feedback visible above the finger. */
+export function ghostTransform(pointer: Point, board: BoardBox, pointerType = 'mouse'): string {
+  const squareSize = board.size / 8;
+  const touch = pointerType === 'touch';
+  const ghostSize = squareSize * (touch ? 1.5 : 1);
+  const x = pointer.x - board.left - ghostSize / 2;
+  const y = pointer.y - board.top - ghostSize / 2 - (touch ? squareSize : 0);
+  const transform = `transform: translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+
+  return touch
+    ? `width: ${ghostSize.toFixed(2)}px; height: ${ghostSize.toFixed(2)}px; ${transform}`
+    : transform;
 }
 
 /** One DOM-free press-to-release gesture. */
