@@ -87,6 +87,39 @@ test('drags through the same move path as click and keyboard', async ({ page }) 
   await expect(page.locator('#moves li')).toHaveText(['e4']);
 });
 
+test('does not restore the drag source before the controlled move callback', async ({ page }) => {
+  await page.evaluate(() => {
+    const scope = window as typeof window & {
+      dragSourceAtMove?: string | null;
+      gameBoard: {
+        board: {
+          update(update: { onMove(from: string, to: string, promotion?: string): void }): void;
+        };
+        move(move: { from: string; to: string; promotion?: string }): void;
+      };
+    };
+    const host = document.getElementById('board');
+    scope.gameBoard.board.update({
+      onMove: (from, to, promotion) => {
+        scope.dragSourceAtMove =
+          host?.shadowRoot
+            ?.querySelector(`[data-square="${from}"]`)
+            ?.getAttribute('data-drag-source') ?? null;
+        scope.gameBoard.move({ from, to, ...(promotion ? { promotion } : {}) });
+      },
+    });
+  });
+
+  await square(page, 'e2').dragTo(square(page, 'e4'));
+
+  expect(
+    await page.evaluate(
+      () => (window as typeof window & { dragSourceAtMove?: string | null }).dragSourceAtMove,
+    ),
+  ).toBe('true');
+  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+});
+
 test('cancels a drag when controlled state disables the board', async ({ page }) => {
   const from = await square(page, 'e2').boundingBox();
   const to = await square(page, 'e4').boundingBox();

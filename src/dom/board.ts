@@ -423,10 +423,10 @@ class DomBoard implements BoardController {
     this.suppressClick = true;
     const hit = this.shadow.elementFromPoint(event.clientX, event.clientY);
     const to = squareFromElement(hit);
-    this.cancelDrag();
     if (!this.state.disabled && to && this.state.legalMoves.get(from)?.includes(to)) {
       void this.play(from, to);
     }
+    this.cancelDrag();
   }
 
   private cancelDrag(): void {
