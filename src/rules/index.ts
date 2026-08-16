@@ -22,6 +22,7 @@ import {
   sameMove,
   toUci,
 } from './line.js';
+import { type MaterialBalance, type MaterialPieceType, materialBalance } from './material.js';
 import {
   PgnError,
   type PgnGame,
@@ -85,6 +86,9 @@ export {
   isThreefoldRepetition,
   type LineMove,
   type LineReplay,
+  type MaterialBalance,
+  materialBalance,
+  type MaterialPieceType,
   type Move,
   type MoveRequest,
   type Outcome,

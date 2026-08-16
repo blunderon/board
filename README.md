@@ -3,7 +3,7 @@
 A small, dependency-free standard-chess library with three independently usable layers:
 
 - `@blunderon/board/rules` — legal moves, FEN, SAN, annotated PGN, outcomes, game snapshots,
-  engine lines, and variation trees.
+  material balance, engine lines, and variation trees.
 - `@blunderon/board/core` — board geometry, FEN piece placement, keyboard navigation, and drag state.
 - `@blunderon/board/dom` — an accessible, themeable browser board with no chess rules inside it.
 - `@blunderon/board` — the convenient rules-and-board controller.
@@ -64,7 +64,7 @@ drop square; touch feedback stays lifted above the finger.
 ## Rules without a board
 
 ```ts
-import { createGame, Position } from '@blunderon/board/rules';
+import { createGame, materialBalance, Position } from '@blunderon/board/rules';
 
 const game = createGame();
 game.move('e4');             // SAN
@@ -87,6 +87,7 @@ const snapshot = Position.initial();
 console.log(snapshot.resolve({ from: 'e2', to: 'e4' }));
 console.log(snapshot.destinations().get('e2')); // ['e3', 'e4']
 console.log(snapshot.checkedKingSquare());      // null
+console.log(materialBalance(snapshot));         // No extra pieces; pointDifference is 0.
 
 const next = snapshot.play({ from: 'e2', to: 'e4' });
 // `snapshot` remains unchanged.

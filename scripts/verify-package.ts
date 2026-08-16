@@ -8,6 +8,10 @@ if (game.position.destinations().get('e7')?.length !== 2) {
 if (game.position.resolve({ from: 'e7', to: 'e5' })?.piece !== 'pawn') {
   throw new Error('the packaged position entry did not resolve a legal move');
 }
+const material = rules.materialBalance(rules.Position.fromFen('4k3/8/8/8/8/8/P7/4K3 w - - 0 1'));
+if (material.pointDifference !== 1 || material.whiteExtra[0] !== 'pawn') {
+  throw new Error('the packaged rules entry did not expose material balance');
+}
 const solution = new rules.VariationTree();
 solution.addLine(['e4', 'e5']);
 const puzzle = new rules.PuzzleSession(solution);
