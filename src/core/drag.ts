@@ -22,6 +22,11 @@ function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/** Whether a pointer travelled far enough to become a drag instead of a tap or long-press. */
+export function pointerMoved(from: Point, to: Point): boolean {
+  return distance(from, to) >= DRAG_THRESHOLD_PX;
+}
+
 /** Positions a drag ghost while keeping touch feedback visible above the finger. */
 export function ghostTransform(pointer: Point, board: BoardBox, pointerType = 'mouse'): string {
   const squareSize = board.size / 8;
@@ -60,7 +65,7 @@ export class DragSession {
   moved(to: Point): boolean {
     if (this.origin === null) return false;
 
-    if (!this.active && distance(this.origin.at, to) >= DRAG_THRESHOLD_PX) this.active = true;
+    if (!this.active && pointerMoved(this.origin.at, to)) this.active = true;
     return this.active;
   }
 

@@ -5,7 +5,9 @@ import {
   describeSquare,
   ghostTransform,
   nextSquare,
+  type Point,
   parsePieces,
+  pointerMoved,
   Selection,
   squareShade,
 } from '../core/index.js';
@@ -15,6 +17,7 @@ import { type BoardTheme, mergeTheme, type ThemeOptions } from './theme.js';
 
 const PROMOTIONS: readonly Promotion[] = ['queen', 'rook', 'bishop', 'knight'];
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+const LONG_PRESS_MS = 500;
 
 export type { BoardArrow, SquareHighlight } from '../shared.js';
 
@@ -87,6 +90,11 @@ class DomBoard implements BoardController {
   private suppressClick = false;
   private cancelPendingPromotion: (() => void) | null = null;
   private annotationFrom: Square | null = null;
+  private annotationTo: Square | null = null;
+  private touchAnnotation: {
+    readonly origin: Point;
+    readonly timer: number;
+  } | null = null;
   private dragTarget: Square | null = null;
 
   constructor(element: HTMLElement, options: BoardOptions) {
@@ -132,7 +140,7 @@ class DomBoard implements BoardController {
   update(update: BoardUpdate): void {
     if (update.fen !== undefined || update.legalMoves !== undefined || update.disabled === true) {
       this.cancelPendingPromotion?.();
-      this.annotationFrom = null;
+      this.cancelAnnotationGesture();
       if (this.drag.from !== null) {
         this.suppressClick = true;
         this.cancelDrag();
@@ -168,6 +176,7 @@ class DomBoard implements BoardController {
 
   destroy(): void {
     this.cancelPendingPromotion?.();
+    this.cancelAnnotationGesture();
     this.events.abort();
     this.shadow.replaceChildren();
     this.squares.clear();
@@ -289,23 +298,36 @@ class DomBoard implements BoardController {
     this.annotations.replaceChildren();
 
     for (const highlight of this.state.highlights) {
-      const point = displayPoint(highlight.square, this.state.orientation);
-      const rectangle = document.createElementNS(SVG_NAMESPACE, 'rect');
-      rectangle.dataset.highlight = highlight.square;
-      rectangle.setAttribute('x', String(point.x - 0.5));
-      rectangle.setAttribute('y', String(point.y - 0.5));
-      rectangle.setAttribute('width', '1');
-      rectangle.setAttribute('height', '1');
-      rectangle.setAttribute('rx', '0.12');
-      rectangle.setAttribute('fill', highlight.color ?? this.state.theme.annotation);
-      rectangle.setAttribute('fill-opacity', '0.42');
-      this.annotations.append(rectangle);
+      this.renderHighlight(highlight);
     }
 
     for (const arrow of this.state.arrows) this.renderArrow(arrow);
+
+    if (this.annotationFrom && this.annotationTo) {
+      if (this.annotationFrom === this.annotationTo) {
+        this.renderHighlight({ square: this.annotationFrom }, true);
+      } else {
+        this.renderArrow({ from: this.annotationFrom, to: this.annotationTo }, true);
+      }
+    }
   }
 
-  private renderArrow(arrow: BoardArrow): void {
+  private renderHighlight(highlight: SquareHighlight, preview = false): void {
+    const point = displayPoint(highlight.square, this.state.orientation);
+    const rectangle = document.createElementNS(SVG_NAMESPACE, 'rect');
+    if (preview) rectangle.dataset.annotationPreview = highlight.square;
+    else rectangle.dataset.highlight = highlight.square;
+    rectangle.setAttribute('x', String(point.x - 0.5));
+    rectangle.setAttribute('y', String(point.y - 0.5));
+    rectangle.setAttribute('width', '1');
+    rectangle.setAttribute('height', '1');
+    rectangle.setAttribute('rx', '0.12');
+    rectangle.setAttribute('fill', highlight.color ?? this.state.theme.annotation);
+    rectangle.setAttribute('fill-opacity', preview ? '0.3' : '0.42');
+    this.annotations.append(rectangle);
+  }
+
+  private renderArrow(arrow: BoardArrow, preview = false): void {
     if (arrow.from === arrow.to) return;
     const from = displayPoint(arrow.from, this.state.orientation);
     const to = displayPoint(arrow.to, this.state.orientation);
@@ -317,7 +339,8 @@ class DomBoard implements BoardController {
     const color = arrow.color ?? this.state.theme.annotation;
 
     const line = document.createElementNS(SVG_NAMESPACE, 'line');
-    line.dataset.arrow = `${arrow.from}${arrow.to}`;
+    if (preview) line.dataset.annotationPreview = `${arrow.from}${arrow.to}`;
+    else line.dataset.arrow = `${arrow.from}${arrow.to}`;
     line.setAttribute('x1', String(from.x));
     line.setAttribute('y1', String(from.y));
     line.setAttribute('x2', String(base.x + unit.x * 0.1));
@@ -325,6 +348,7 @@ class DomBoard implements BoardController {
     line.setAttribute('stroke', color);
     line.setAttribute('stroke-width', '0.18');
     line.setAttribute('stroke-linecap', 'round');
+    if (preview) line.setAttribute('stroke-opacity', '0.65');
 
     const head = document.createElementNS(SVG_NAMESPACE, 'polygon');
     head.setAttribute(
@@ -334,6 +358,7 @@ class DomBoard implements BoardController {
       },${base.y - perpendicular.y}`,
     );
     head.setAttribute('fill', color);
+    if (preview) head.setAttribute('fill-opacity', '0.65');
     this.annotations.append(line, head);
   }
 
@@ -348,7 +373,7 @@ class DomBoard implements BoardController {
     this.grid.addEventListener(
       'pointercancel',
       () => {
-        this.annotationFrom = null;
+        this.cancelAnnotationGesture();
         this.cancelDrag();
       },
       { signal },
@@ -396,7 +421,15 @@ class DomBoard implements BoardController {
     if (event.button === 2) {
       event.preventDefault();
       this.annotationFrom = square;
+      this.annotationTo = square;
       (event.target as Element).setPointerCapture?.(event.pointerId);
+      return;
+    }
+    if (event.pointerType === 'touch') {
+      if (this.state.legalMoves.has(square)) {
+        this.drag.press(square, { x: event.clientX, y: event.clientY });
+      }
+      this.startTouchAnnotation(square, event);
       return;
     }
     if (!this.state.legalMoves.has(square)) return;
@@ -405,6 +438,23 @@ class DomBoard implements BoardController {
   }
 
   private onPointerMove(event: PointerEvent): void {
+    if (
+      this.touchAnnotation &&
+      !pointerMoved(this.touchAnnotation.origin, {
+        x: event.clientX,
+        y: event.clientY,
+      })
+    ) {
+      return;
+    }
+    if (this.touchAnnotation) this.clearTouchAnnotation();
+    if (this.annotationFrom) {
+      event.preventDefault();
+      const hit = this.shadow.elementFromPoint(event.clientX, event.clientY);
+      this.annotationTo = squareFromElement(hit);
+      this.renderAnnotations();
+      return;
+    }
     if (!this.drag.moved({ x: event.clientX, y: event.clientY })) return;
     event.preventDefault();
     const box = this.frame.getBoundingClientRect();
@@ -422,16 +472,20 @@ class DomBoard implements BoardController {
   }
 
   private onPointerUp(event: PointerEvent): void {
+    this.clearTouchAnnotation();
     if (this.annotationFrom) {
       const from = this.annotationFrom;
+      const fallback = this.annotationTo;
       this.annotationFrom = null;
+      this.annotationTo = null;
       const hit = this.shadow.elementFromPoint(event.clientX, event.clientY);
-      const to = squareFromElement(hit);
+      const to = squareFromElement(hit) ?? fallback;
       if (to) {
         this.state.onAnnotate?.(
           from === to ? { type: 'highlight', square: from } : { type: 'arrow', from, to },
         );
       }
+      this.renderAnnotations();
       return;
     }
     const from = this.drag.release();
@@ -453,6 +507,32 @@ class DomBoard implements BoardController {
     this.dragTargetHint.removeAttribute('style');
     this.ghost.removeAttribute('style');
     this.patch();
+  }
+
+  private startTouchAnnotation(square: Square, event: PointerEvent): void {
+    this.clearTouchAnnotation();
+    const origin = { x: event.clientX, y: event.clientY };
+    const timer = window.setTimeout(() => {
+      this.touchAnnotation = null;
+      this.annotationFrom = square;
+      this.annotationTo = square;
+      this.suppressClick = true;
+      this.cancelDrag();
+    }, LONG_PRESS_MS);
+    this.touchAnnotation = { origin, timer };
+    (event.target as Element).setPointerCapture?.(event.pointerId);
+  }
+
+  private clearTouchAnnotation(): void {
+    if (!this.touchAnnotation) return;
+    window.clearTimeout(this.touchAnnotation.timer);
+    this.touchAnnotation = null;
+  }
+
+  private cancelAnnotationGesture(): void {
+    this.clearTouchAnnotation();
+    this.annotationFrom = null;
+    this.annotationTo = null;
   }
 
   private updateDragTarget(event: PointerEvent): void {

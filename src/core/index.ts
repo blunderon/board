@@ -4,6 +4,7 @@ import {
   DragSession,
   ghostTransform,
   type Point,
+  pointerMoved,
 } from './drag.js';
 import { parsePieces } from './fen.js';
 import { nextSquare } from './navigate.js';
@@ -43,6 +44,7 @@ export {
   pieceLabel,
   pieceTypeLabel,
   type Point,
+  pointerMoved,
   SQUARES,
   Selection,
   type SelectionResult,

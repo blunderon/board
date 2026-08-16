@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
-import { DragSession, ghostTransform } from './drag.js';
+import { DragSession, ghostTransform, pointerMoved } from './drag.js';
+
+test('recognizes movement at the shared pointer gesture threshold', () => {
+  expect(pointerMoved({ x: 10, y: 10 }, { x: 15, y: 10 })).toBe(false);
+  expect(pointerMoved({ x: 10, y: 10 }, { x: 16, y: 10 })).toBe(true);
+});
 
 test('lifts and enlarges a touch ghost without moving its drop point', () => {
   const board = { left: 0, size: 160, top: 0 };

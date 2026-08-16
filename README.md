@@ -118,6 +118,11 @@ board.destroy();
 The renderer accepts position data and reports intent. It never imports or runs the rules engine,
 so it can sit on top of a server, another chess library, or an analysis tool.
 
+Annotations follow the same controlled boundary: pass `highlights` and `arrows`, then handle
+`onAnnotate` to toggle or persist the emitted intent. The DOM board owns right-click and touch
+long-press gesture recognition, but the application owns annotation lifetime. This lets live games
+clear markings after a move while analysis tools retain different markings on each position.
+
 ## Puzzles
 
 Author one or more legal solution lines, then let `createPuzzleBoard` handle move matching, branching,
@@ -266,7 +271,9 @@ await save(JSON.stringify(analysis.snapshot()));
 analysis.restore(JSON.parse(await load()));
 ```
 
-Pointer users can right-drag to toggle arrows and right-click to toggle square highlights.
+Pointer users can right-drag to toggle arrows and right-click to toggle square highlights. On touch
+screens, a 500 ms long-press enters annotation mode: release on the starting square to highlight it,
+or drag to another square to draw an arrow. A preview distinguishes annotation gestures from moves.
 Programmatic arrows and highlights accept labels that are included in square accessibility text;
 unlabelled highlights are announced as highlighted.
 

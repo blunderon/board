@@ -141,6 +141,56 @@ test('keeps touch drag feedback visible above the finger and marks the drop squa
   await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
 });
 
+test('keeps quick touch taps on the normal move path', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+
+  await touchTap(cdp, await centerOf(square(page, 'e2')));
+  await expect(square(page, 'e2')).toHaveAttribute('aria-selected', 'true');
+  await touchTap(cdp, await centerOf(square(page, 'e4')));
+
+  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+  await expect(page.locator('#moves li')).toHaveText(['e4']);
+  await page.waitForTimeout(550);
+  await expect(page.locator('#board [data-annotation-preview]')).toHaveCount(0);
+});
+
+test('uses a touch long-press to highlight a square or draw an arrow', async ({ page }) => {
+  await page.evaluate(() => {
+    const scope = window as typeof window & {
+      gameBoard: { destroy(): void };
+      blunderon: {
+        createAnalysisBoard(element: HTMLElement): { destroy(): void };
+      };
+      touchAnalysis?: { destroy(): void };
+    };
+    scope.gameBoard.destroy();
+    const element = document.getElementById('board');
+    if (!element) throw new Error('missing board');
+    scope.touchAnalysis = scope.blunderon.createAnalysisBoard(element);
+  });
+  const cdp = await page.context().newCDPSession(page);
+  const d5 = await centerOf(square(page, 'd5'));
+
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [d5], type: 'touchStart' });
+  await page.waitForTimeout(550);
+  await expect(page.locator('#board [data-annotation-preview="d5"]')).toHaveCount(1);
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
+  await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(1);
+
+  const e2 = await centerOf(square(page, 'e2'));
+  const e4 = await centerOf(square(page, 'e4'));
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [e2], type: 'touchStart' });
+  await page.waitForTimeout(550);
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [e4], type: 'touchMove' });
+  await expect(page.locator('#board [data-annotation-preview="e2e4"]')).toHaveCount(1);
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
+
+  await expect(page.locator('#board .annotations [data-arrow="e2e4"]')).toHaveCount(1);
+  await expect(square(page, 'e2')).toHaveAttribute('aria-label', /white pawn, arrow to e4/);
+  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, empty, arrow from e2');
+  await expect(page.locator('#moves li')).toHaveCount(0);
+});
+
 test('does not restore the drag source before the controlled move callback', async ({ page }) => {
   await page.evaluate(() => {
     const scope = window as typeof window & {
@@ -564,6 +614,20 @@ test('keeps the themed board within a narrow offline viewport', async ({ page })
 
 function square(page: import('@playwright/test').Page, name: string) {
   return page.locator(`#board [data-square="${name}"]`);
+}
+
+async function centerOf(locator: import('@playwright/test').Locator) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error('board square is not visible');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function touchTap(
+  cdp: import('@playwright/test').CDPSession,
+  point: { x: number; y: number },
+): Promise<void> {
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [point], type: 'touchStart' });
+  await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
 }
 
 async function drawArrow(
