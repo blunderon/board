@@ -337,6 +337,7 @@ class DomBoard implements BoardController {
     const base = { x: tip.x - unit.x * 0.48, y: tip.y - unit.y * 0.48 };
     const perpendicular = { x: -unit.y * 0.25, y: unit.x * 0.25 };
     const color = arrow.color ?? this.state.theme.annotation;
+    const opacity = preview ? 0.65 : arrow.opacity;
 
     const line = document.createElementNS(SVG_NAMESPACE, 'line');
     if (preview) line.dataset.annotationPreview = `${arrow.from}${arrow.to}`;
@@ -348,7 +349,7 @@ class DomBoard implements BoardController {
     line.setAttribute('stroke', color);
     line.setAttribute('stroke-width', '0.18');
     line.setAttribute('stroke-linecap', 'round');
-    if (preview) line.setAttribute('stroke-opacity', '0.65');
+    if (opacity !== undefined) line.setAttribute('stroke-opacity', String(opacity));
 
     const head = document.createElementNS(SVG_NAMESPACE, 'polygon');
     head.setAttribute(
@@ -358,7 +359,7 @@ class DomBoard implements BoardController {
       },${base.y - perpendicular.y}`,
     );
     head.setAttribute('fill', color);
-    if (preview) head.setAttribute('fill-opacity', '0.65');
+    if (opacity !== undefined) head.setAttribute('fill-opacity', String(opacity));
     this.annotations.append(line, head);
   }
 

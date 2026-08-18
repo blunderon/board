@@ -191,6 +191,11 @@ test('rejects annotations that would make its own output unreadable', () => {
       },
     }),
   ).toThrow(TypeError);
+  expect(() =>
+    tree.annotate(e4, {
+      arrows: [{ from: 'e2', to: 'e4', opacity: 1.1 }],
+    }),
+  ).toThrow(TypeError);
   expect(e4.annotations).toEqual({ comment: 'Candidate' });
   expect(() => VariationTree.fromSnapshot(tree.snapshot)).not.toThrow();
 });

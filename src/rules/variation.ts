@@ -598,6 +598,15 @@ function validateArrows(input: unknown): readonly BoardArrow[] | undefined {
     }
     if (arrow.color !== undefined && typeof arrow.color !== 'string')
       throw new TypeError('analysis arrow color must be a string');
+    if (
+      arrow.opacity !== undefined &&
+      (typeof arrow.opacity !== 'number' ||
+        !Number.isFinite(arrow.opacity) ||
+        arrow.opacity < 0 ||
+        arrow.opacity > 1)
+    ) {
+      throw new TypeError('analysis arrow opacity must be between zero and one');
+    }
     if (arrow.label !== undefined && typeof arrow.label !== 'string')
       throw new TypeError('analysis arrow label must be a string');
     return arrow as unknown as BoardArrow;

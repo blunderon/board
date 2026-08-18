@@ -336,7 +336,7 @@ test('renders controlled analysis highlights and arrows without intercepting inp
           board: {
             update(update: {
               highlights: readonly { square: 'e4'; color: string; label: string }[];
-              arrows: readonly { from: 'g1'; to: 'f3'; color: string }[];
+              arrows: readonly { from: 'g1'; to: 'f3'; color: string; opacity: number }[];
             }): void;
           };
         };
@@ -344,12 +344,17 @@ test('renders controlled analysis highlights and arrows without intercepting inp
     ).gameBoard;
     controller.board.update({
       highlights: [{ square: 'e4', color: '#ff0000', label: 'Critical' }],
-      arrows: [{ from: 'g1', to: 'f3', color: '#0000ff' }],
+      arrows: [{ from: 'g1', to: 'f3', color: '#0000ff', opacity: 0.35 }],
     });
   });
 
   await expect(page.locator('#board .annotations [data-highlight="e4"]')).toHaveCount(1);
   await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveCount(1);
+  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveAttribute(
+    'stroke-opacity',
+    '0.35',
+  );
+  await expect(page.locator('#board .annotations polygon')).toHaveAttribute('fill-opacity', '0.35');
   await expect(square(page, 'e4')).toHaveAttribute('aria-label', /Critical/);
 
   await square(page, 'e2').click();

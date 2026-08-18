@@ -32,5 +32,6 @@ export interface BoardArrow {
   readonly from: Square;
   readonly to: Square;
   readonly color?: string;
+  readonly opacity?: number;
   readonly label?: string;
 }

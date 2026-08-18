@@ -259,7 +259,7 @@ analysis.annotate({
     bound: 'exact',
   },
   highlights: [{ square: 'd5', label: 'Weak square' }],
-  arrows: [{ from: 'g1', to: 'f3', label: 'Develop the knight' }],
+  arrows: [{ from: 'g1', to: 'f3', opacity: 0.8, label: 'Develop the knight' }],
 });
 analysis.back();
 analysis.forward();
