@@ -31,6 +31,11 @@ export class Selection {
     return { type: 'cleared' };
   }
 
+  /** Marks a piece without offering its destinations, which is all a waiting board can do. */
+  select(square: Square): void {
+    this.selected = square;
+  }
+
   clear(): void {
     this.selected = null;
   }

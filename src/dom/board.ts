@@ -33,6 +33,8 @@ export interface BoardOptions {
   readonly checkedKing?: Square | null;
   readonly coordinates?: boolean;
   readonly disabled?: boolean;
+  /** Side the user plays, whose pieces stay pickable while the board waits for the opponent. */
+  readonly player?: Color | null;
   readonly highlights?: readonly SquareHighlight[];
   readonly arrows?: readonly BoardArrow[];
   readonly theme?: ThemeOptions;
@@ -58,6 +60,7 @@ interface State {
   checkedKing: Square | null;
   coordinates: boolean;
   disabled: boolean;
+  player: Color | null;
   highlights: readonly SquareHighlight[];
   arrows: readonly BoardArrow[];
   theme: BoardTheme;
@@ -141,24 +144,17 @@ class DomBoard implements BoardController {
     if (update.fen !== undefined || update.legalMoves !== undefined || update.disabled === true) {
       this.cancelPendingPromotion?.();
       this.cancelAnnotationGesture();
-      if (this.drag.from !== null) {
-        this.suppressClick = true;
-        this.cancelDrag();
-      }
-    }
-    if (update.fen !== undefined && this.selection.square !== null) {
-      this.selection.clear();
-      this.state.onSelect?.(null);
     }
     const orientationChanged =
       update.orientation !== undefined && update.orientation !== this.state.orientation;
+    const previous = this.pieces;
     this.state = {
       ...this.state,
       ...update,
       theme: update.theme ? mergeTheme({ ...this.state.theme, ...update.theme }) : this.state.theme,
     };
     if (update.fen !== undefined) this.pieces = parsePieces(update.fen);
-    if (this.state.disabled) this.selection.clear();
+    this.releaseUnheldPieces(previous);
     if (orientationChanged) this.renderGrid();
     this.patch();
   }
@@ -250,7 +246,7 @@ class DomBoard implements BoardController {
       );
       button.setAttribute('aria-selected', String(selected === square));
       button.tabIndex = square === this.focusSquare ? 0 : -1;
-      button.setAttribute('aria-disabled', String(this.state.disabled));
+      button.setAttribute('aria-disabled', String(this.state.disabled && !this.pickable(square)));
       button.dataset.empty = String(piece === null);
       button.dataset.movable = String(!this.state.disabled && this.state.legalMoves.has(square));
       button.dataset.dragSource = String(this.drag.dragging && this.drag.from === square);
@@ -418,24 +414,58 @@ class DomBoard implements BoardController {
 
   private onPointerDown(event: PointerEvent): void {
     const square = squareFromEvent(event);
-    if (!square || this.state.disabled) return;
+    if (!square) return;
     if (event.button === 2) {
+      if (this.state.disabled) return;
       event.preventDefault();
       this.annotationFrom = square;
       this.annotationTo = square;
       (event.target as Element).setPointerCapture?.(event.pointerId);
       return;
     }
-    if (event.pointerType === 'touch') {
-      if (this.state.legalMoves.has(square)) {
-        this.drag.press(square, { x: event.clientX, y: event.clientY });
-      }
+
+    if (this.pickable(square)) this.drag.press(square, { x: event.clientX, y: event.clientY });
+    else if (this.state.disabled || event.pointerType !== 'touch') return;
+
+    // A long press draws an annotation, which is only offered while the board can be played.
+    if (event.pointerType === 'touch' && !this.state.disabled) {
       this.startTouchAnnotation(square, event);
       return;
     }
-    if (!this.state.legalMoves.has(square)) return;
-    this.drag.press(square, { x: event.clientX, y: event.clientY });
     (event.target as Element).setPointerCapture?.(event.pointerId);
+  }
+
+  /** Whether a piece can be lifted: legal to move now, or the player's own piece to hold. */
+  private pickable(square: Square): boolean {
+    const player = this.state.player;
+    if (player !== null && this.pieces.get(square)?.color === player) return true;
+    return !this.state.disabled && this.state.legalMoves.has(square);
+  }
+
+  /**
+   * A held piece outlives an update so the player can pick their reply up while the opponent is
+   * still thinking and drop it as soon as the board comes back. The hold ends once the piece has
+   * left its square or the board stops offering it.
+   */
+  private releaseUnheldPieces(previous: ReadonlyMap<Square, Piece>): void {
+    const held = this.drag.from;
+    if (held !== null && !this.stillHeld(previous, held)) {
+      this.suppressClick = true;
+      this.cancelDrag();
+    }
+
+    const selected = this.selection.square;
+    if (selected !== null && !this.stillHeld(previous, selected)) {
+      this.selection.clear();
+      this.state.onSelect?.(null);
+    }
+  }
+
+  private stillHeld(previous: ReadonlyMap<Square, Piece>, square: Square): boolean {
+    const before = previous.get(square);
+    const after = this.pieces.get(square);
+    if (before?.color !== after?.color || before?.type !== after?.type) return false;
+    return !this.state.disabled || this.pickable(square);
   }
 
   private onPointerMove(event: PointerEvent): void {
@@ -560,11 +590,24 @@ class DomBoard implements BoardController {
   }
 
   private async activate(square: Square): Promise<void> {
-    if (this.state.disabled) return;
+    if (this.state.disabled) {
+      this.choosePiece(square);
+      return;
+    }
     const result = this.selection.activate(square, this.state.legalMoves);
     this.state.onSelect?.(this.selection.square);
     this.patch();
     if (result.type === 'move') await this.play(result.from, result.to);
+  }
+
+  /** Waiting for the opponent still lets the player line up the piece they mean to move next. */
+  private choosePiece(square: Square): void {
+    const next = this.pickable(square) ? square : null;
+    if (next === this.selection.square) return;
+    if (next) this.selection.select(next);
+    else this.selection.clear();
+    this.state.onSelect?.(next);
+    this.patch();
   }
 
   private async play(from: Square, to: Square): Promise<void> {
@@ -663,6 +706,7 @@ function stateFromOptions(options: BoardOptions): State {
     checkedKing: options.checkedKing ?? null,
     coordinates: options.coordinates ?? true,
     disabled: options.disabled ?? false,
+    player: options.player ?? null,
     highlights: options.highlights ?? [],
     arrows: options.arrows ?? [],
     theme: mergeTheme(options.theme),

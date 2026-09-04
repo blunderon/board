@@ -617,6 +617,58 @@ test('keeps the themed board within a narrow offline viewport', async ({ page })
   expect(metrics.scrollWidth).toBe(metrics.clientWidth);
 });
 
+test('holds a piece picked up while the opponent is still thinking', async ({ page }) => {
+  await controlBoard(page, { disabled: true, player: 'black' });
+  const from = await centerOf(square(page, 'e7'));
+  const to = await centerOf(square(page, 'e5'));
+
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y);
+  await expect(square(page, 'e7')).toHaveAttribute('data-drag-source', 'true');
+
+  await playOpponentMove(page, 'e2', 'e4');
+  await expect(page.locator('#board .ghost')).toBeVisible();
+  await page.mouse.up();
+
+  await expect(page.locator('#moves li')).toHaveText(['e4', 'e5']);
+});
+
+test('drops a held piece when the opponent takes it off its square', async ({ page }) => {
+  await page.evaluate(() => {
+    const controller = (window as typeof window & { gameBoard: { reset(fen: string): void } })
+      .gameBoard;
+    controller.reset('rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2');
+  });
+  await controlBoard(page, { disabled: true, player: 'black' });
+  const from = await centerOf(square(page, 'e5'));
+  const to = await centerOf(square(page, 'e4'));
+
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y);
+  await expect(page.locator('#board .ghost')).toBeVisible();
+
+  await playOpponentMove(page, 'd4', 'e5');
+  await expect(page.locator('#board .ghost')).toBeHidden();
+  await page.mouse.up();
+
+  await expect(page.locator('#moves li')).toHaveText(['dxe5']);
+});
+
+test('keeps a piece chosen while waiting so the reply is one tap away', async ({ page }) => {
+  await controlBoard(page, { disabled: true, player: 'black' });
+
+  await square(page, 'e7').click();
+  await expect(square(page, 'e7')).toHaveAttribute('aria-selected', 'true');
+
+  await playOpponentMove(page, 'e2', 'e4');
+  await expect(square(page, 'e7')).toHaveAttribute('aria-selected', 'true');
+  await square(page, 'e5').click();
+
+  await expect(page.locator('#moves li')).toHaveText(['e4', 'e5']);
+});
+
 function square(page: import('@playwright/test').Page, name: string) {
   return page.locator(`#board [data-square="${name}"]`);
 }
@@ -648,4 +700,36 @@ async function drawArrow(
   await page.mouse.down({ button: 'right' });
   await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
   await page.mouse.up({ button: 'right' });
+}
+
+async function controlBoard(
+  page: import('@playwright/test').Page,
+  update: { disabled?: boolean; player?: 'white' | 'black' },
+): Promise<void> {
+  await page.evaluate((value) => {
+    const controller = (
+      window as typeof window & {
+        gameBoard: { board: { update(update: Record<string, unknown>): void } };
+      }
+    ).gameBoard;
+    controller.board.update(value);
+  }, update);
+}
+
+async function playOpponentMove(
+  page: import('@playwright/test').Page,
+  from: string,
+  to: string,
+): Promise<void> {
+  await page.evaluate(
+    (move) => {
+      const controller = (
+        window as typeof window & {
+          gameBoard: { move(move: { from: string; to: string }): void };
+        }
+      ).gameBoard;
+      controller.move(move);
+    },
+    { from, to },
+  );
 }

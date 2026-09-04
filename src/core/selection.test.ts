@@ -26,4 +26,13 @@ describe('Selection', () => {
     expect(selection.activate('g1', destinations)).toEqual({ type: 'selected', square: 'g1' });
     expect(selection.activate('g4', destinations)).toEqual({ type: 'cleared' });
   });
+
+  test('marks a piece chosen before its destinations are known', () => {
+    const selection = new Selection();
+    const destinations = new Map([['e7' as const, ['e5' as const]]]);
+
+    selection.select('e7');
+    expect(selection.square).toBe('e7');
+    expect(selection.activate('e5', destinations)).toEqual({ type: 'move', from: 'e7', to: 'e5' });
+  });
 });
