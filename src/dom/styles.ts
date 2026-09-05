@@ -56,6 +56,7 @@ export const BOARD_STYLES = `
   }
 
   .square[data-movable='true'] { cursor: grab; }
+  .frame[data-dragging='true'] .square { cursor: grabbing; }
   .square.light { --square: var(--board-light); }
   .square.dark { --square: var(--board-dark); }
   .square.last-move { --square: color-mix(in srgb, var(--board-last) 64%, var(--base)); }

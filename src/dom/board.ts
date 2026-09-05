@@ -248,7 +248,7 @@ class DomBoard implements BoardController {
       button.tabIndex = square === this.focusSquare ? 0 : -1;
       button.setAttribute('aria-disabled', String(this.state.disabled && !this.pickable(square)));
       button.dataset.empty = String(piece === null);
-      button.dataset.movable = String(!this.state.disabled && this.state.legalMoves.has(square));
+      button.dataset.movable = String(this.pickable(square));
       button.dataset.dragSource = String(this.drag.dragging && this.drag.from === square);
       button.dataset.dropTarget = String(this.dragTarget === square);
       button.dataset.legalDestination = targets.includes(square)

@@ -669,6 +669,22 @@ test('keeps a piece chosen while waiting so the reply is one tap away', async ({
   await expect(page.locator('#moves li')).toHaveText(['e4', 'e5']);
 });
 
+test('offers a grab cursor for the pieces that stay pickable while waiting', async ({ page }) => {
+  await controlBoard(page, { disabled: true, player: 'black' });
+
+  await expect(square(page, 'e7')).toHaveCSS('cursor', 'grab');
+  await expect(square(page, 'e2')).toHaveCSS('cursor', 'default');
+
+  const from = await centerOf(square(page, 'e7'));
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x, from.y - 40);
+
+  await expect(square(page, 'e7')).toHaveCSS('cursor', 'grabbing');
+  await expect(square(page, 'e2')).toHaveCSS('cursor', 'grabbing');
+  await page.mouse.up();
+});
+
 function square(page: import('@playwright/test').Page, name: string) {
   return page.locator(`#board [data-square="${name}"]`);
 }
