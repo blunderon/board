@@ -586,6 +586,12 @@ test('keeps an analysis tree and board synchronized through navigation and resto
   await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(1);
   await expect(square(page, 'd5')).toHaveAttribute('aria-label', /highlighted/);
 
+  // Drawings are scratch marks, so the next tap on the board wipes them.
+  await square(page, 'e2').click();
+  await expect(page.locator('#board .annotations [data-arrow="e4d5"]')).toHaveCount(0);
+  await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(0);
+  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveCount(0);
+
   const exposesMutableTree = await page.evaluate(() => {
     const scope = window as typeof window & { analysis: object };
     return 'tree' in scope.analysis;

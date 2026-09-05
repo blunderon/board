@@ -23,7 +23,8 @@ export type { BoardArrow, SquareHighlight } from '../shared.js';
 
 export type BoardAnnotationIntent =
   | { readonly type: 'highlight'; readonly square: Square }
-  | { readonly type: 'arrow'; readonly from: Square; readonly to: Square };
+  | { readonly type: 'arrow'; readonly from: Square; readonly to: Square }
+  | { readonly type: 'clear' };
 
 export interface BoardOptions {
   readonly fen: string;
@@ -518,6 +519,11 @@ class DomBoard implements BoardController {
       }
       this.renderAnnotations();
       return;
+    }
+
+    // Drawings are scratch marks, so any ordinary tap on the board wipes the slate.
+    if (event.button !== 2 && (this.state.highlights.length > 0 || this.state.arrows.length > 0)) {
+      this.state.onAnnotate?.({ type: 'clear' });
     }
     const from = this.drag.release();
     if (!from) return;

@@ -122,7 +122,8 @@ so it can sit on top of a server, another chess library, or an analysis tool.
 Annotations follow the same controlled boundary: pass `highlights` and `arrows`, then handle
 `onAnnotate` to toggle or persist the emitted intent. The DOM board owns right-click and touch
 long-press gesture recognition, but the application owns annotation lifetime. This lets live games
-clear markings after a move while analysis tools retain different markings on each position.
+clear markings after a move while analysis tools retain different markings on each position. An
+ordinary tap on an annotated board emits a `clear` intent, which the application is free to ignore.
 
 ## Puzzles
 

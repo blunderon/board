@@ -87,6 +87,11 @@ export function createAnalysisBoard(
 
   const annotateFromBoard = (intent: BoardAnnotationIntent): void => {
     const annotations = tree.current.annotations;
+    if (intent.type === 'clear') {
+      tree.annotate(tree.current, { arrows: [], highlights: [] });
+      sync();
+      return;
+    }
     if (intent.type === 'highlight') {
       const highlights = toggle(
         annotations.highlights ?? [],
