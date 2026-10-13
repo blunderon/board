@@ -177,7 +177,6 @@ test('uses a touch long-press to highlight a square or draw an arrow', async ({ 
   await mechanicsScreenshot(page, 'touch-arrow-preview');
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
 
-  await cellName(page, 'e2', /arrow to e4/);
   await cellName(page, 'e2', /white pawn, arrow to e4/);
   await cellName(page, 'e4', 'e4, empty, arrow from e2');
   await moves(page, []);
@@ -580,14 +579,12 @@ test('keeps an analysis tree and board synchronized through navigation and resto
 
   await cellName(page, 'e4', /white pawn, Candidate/);
   await cellName(page, 'g1', /Develop the knight/);
-  await cellName(page, 'g1', /Develop the knight/);
 
   expect(await boardSnapshot(page)).toMatchSnapshot('restored-analysis.txt');
   await drawArrow(page, 'e4', 'd5');
   await cellName(page, 'e4', /arrow to d5/);
 
   await (await square(page, 'd5')).click({ button: 'right' });
-  await cellName(page, 'd5', /highlighted/);
   await cellName(page, 'd5', /highlighted/);
 
   // Drawings are scratch marks, so the next tap on the board wipes them.
