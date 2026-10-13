@@ -1,0 +1,11 @@
+region "Move history"
+  StaticText "MOVES"
+  StaticText "2 PLIES"
+  list
+    listitem level=1
+      StaticText "1."
+      strong
+        StaticText "e4"
+    listitem level=1
+      strong
+        StaticText "c5"

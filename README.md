@@ -317,6 +317,7 @@ The DOM board provides:
 - One keyboard tab stop with arrow, Home, and End navigation.
 - Enter or Space to select and move.
 - Visible focus, selection, destination, last-move, and check states.
+- Accessible descriptions for last move, check, legal destinations, and pointer previews.
 - An accessible promotion dialog and move announcements.
 - Click/tap and drag alternatives using the same callback.
 
@@ -325,12 +326,19 @@ The DOM board provides:
 ```sh
 bun install
 bun test
-bun run test:e2e
+bun run test:e2e          # Real Chrome AX interaction tests
+bun run test:container    # Full browser suite and screenshots in pinned image
+bun run snapshots:update # Regenerate AX/screenshot baselines in pinned image
 bun run ci
 ```
 
 Unit tests live beside their source files. The browser examples are generated into `dist/examples`
-by `bun run build` and make no non-local requests.
+by `bun run build` and make no non-local requests. Browser tests navigate and assert Chrome’s
+accessibility tree through `github:blunderon/ax#v0.1.0`. Screenshots cover injected positions at
+phone and desktop widths; animations are disabled. Generate and verify them only with the
+container scripts, using `mcr.microsoft.com/playwright:v1.61.1-noble` (Linux/amd64), matching
+Playwright exactly. The script prefers Podman and falls back to Docker. Host runs use installed
+Google Chrome and skip screenshots; CI runs the full suite in the same pinned image.
 
 The library code is MIT licensed. The bundled Cburnett pieces are CC BY-SA 3.0; their attribution
 is shipped at `dist/pieces/ATTRIBUTION.md` and embedded in every SVG so it survives consumer asset

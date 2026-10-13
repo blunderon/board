@@ -1,0 +1,13 @@
+list "Moves played"
+  listitem level=1
+    StaticText "1"
+    strong
+      StaticText "Rxe8+"
+  listitem level=1
+    StaticText "2"
+    strong
+      StaticText "Rxe8"
+  listitem level=1
+    StaticText "3"
+    strong
+      StaticText "Qxe8#"

@@ -1,0 +1,22 @@
+region "Examples"
+  link "01 VARIATION TREES Game analysis Navigate an annotated PGN, create branches, and add a validated UCI engine line." focusable=true
+    StaticText "01"
+    paragraph
+      StaticText "VARIATION TREES"
+    heading "Game analysis" level=2
+      StaticText "Game analysis"
+    StaticText "Navigate an annotated PGN, create branches, and add a validated UCI engine line."
+  link "02 OPPONENT POLICY Play a bot Schedule an asynchronous opponent while the library owns moves and outcomes." focusable=true
+    StaticText "02"
+    paragraph
+      StaticText "OPPONENT POLICY"
+    heading "Play a bot" level=2
+      StaticText "Play a bot"
+    StaticText "Schedule an asynchronous opponent while the library owns moves and outcomes."
+  link "03 AUTHORED LINES Solve puzzles Match branching solutions, reject mistakes, play replies, and track completion." focusable=true
+    StaticText "03"
+    paragraph
+      StaticText "AUTHORED LINES"
+    heading "Solve puzzles" level=2
+      StaticText "Solve puzzles"
+    StaticText "Match branching solutions, reject mistakes, play replies, and track completion."

@@ -1,0 +1,114 @@
+main
+  generic "Playable chess board"
+    generic
+      grid "Chess board" multiselectable=false readonly=false
+        row "a8, black rook b8, black knight c8, black bishop d8, black queen e8, black king f8, black bishop g8, black knight h8, black rook"
+          gridcell "a8, black rook" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "8"
+          gridcell "b8, black knight" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c8, black bishop" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d8, black queen" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e8, black king" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f8, black bishop" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g8, black knight" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h8, black rook" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a7, black pawn b7, black pawn c7, black pawn d7, black pawn e7, black pawn f7, black pawn g7, black pawn h7, black pawn"
+          gridcell "a7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "7"
+          gridcell "b7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h7, black pawn" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a6, empty b6, empty c6, empty d6, empty e6, empty f6, empty g6, empty h6, empty"
+          gridcell "a6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "6"
+          gridcell "b6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h6, empty" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a5, empty b5, empty c5, empty d5, empty e5, empty f5, empty g5, empty h5, empty"
+          gridcell "a5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "5"
+          gridcell "b5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h5, empty" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a4, empty b4, empty c4, empty d4, empty e4, white pawn f4, empty g4, empty h4, empty"
+          gridcell "a4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "4"
+          gridcell "b4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e4, white pawn" description="last move" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h4, empty" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a3, empty b3, empty c3, empty d3, empty e3, empty f3, empty g3, empty h3, empty"
+          gridcell "a3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "3"
+          gridcell "b3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h3, empty" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a2, white pawn b2, white pawn c2, white pawn d2, white pawn e2, empty f2, white pawn g2, white pawn h2, white pawn"
+          gridcell "a2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "2"
+          gridcell "b2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "c2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "d2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "e2, empty" description="last move" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "f2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "g2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+          gridcell "h2, white pawn" focusable=true invalid="false" readonly=false required=false selected=false
+        row "a1, white rook b1, white knight c1, white bishop d1, white queen e1, white king f1, white bishop g1, white knight h1, white rook"
+          gridcell "a1, white rook" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "a"
+            StaticText "1"
+          gridcell "b1, white knight" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "b"
+          gridcell "c1, white bishop" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "c"
+          gridcell "d1, white queen" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "d"
+          gridcell "e1, white king" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "e"
+          gridcell "f1, white bishop" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "f"
+          gridcell "g1, white knight" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "g"
+          gridcell "h1, white rook" focusable=true invalid="false" readonly=false required=false selected=false
+            StaticText "h"
+      generic atomic=false live="polite" relevant="additions text"
+  complementary
+    sectionheader
+      heading "Local chess board" level=1
+        StaticText "Local chess board"
+      paragraph
+        StaticText "White to move"
+    region "Game controls"
+      form
+        textbox "Move in SAN or UCI" editable="plaintext" focusable=true invalid="false" multiline=false readonly=false required=false settable=true
+          generic editable="plaintext"
+        button "Play" focusable=true invalid="false"
+          StaticText "Play"
+      alert atomic=true live="assertive" relevant="additions text"
+      button "Undo" focusable=true invalid="false"
+        StaticText "Undo"
+      button "New game" focusable=true invalid="false"
+        StaticText "New game"
+    generic
+      heading "MOVES" level=2
+        StaticText "MOVES"
+      list

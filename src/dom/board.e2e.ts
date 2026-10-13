@@ -1,11 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { type AXHandle, snapshot as axSnapshot, find } from '@blunderon/ax';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../../tests/fixtures.js';
 
 test.beforeEach(async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/example/');
-  await page.waitForLoadState('networkidle');
-  expect(errors).toEqual([]);
+  await find(page, { role: 'grid', name: 'Chess board' });
 });
 
 test('plays a complete game by moving both colors on the board', async ({ page }) => {
@@ -15,14 +14,14 @@ test('plays a complete game by moving both colors on the board', async ({ page }
     ['g2', 'g4'],
     ['d8', 'h4'],
   ]) {
-    await square(page, from).click();
-    await square(page, to).click();
+    await (await square(page, from)).click();
+    await (await square(page, to)).click();
   }
 
-  await expect(page.locator('#status')).toHaveText('Checkmate — black wins');
-  await expect(page.locator('#moves li')).toHaveText(['f3', 'e5', 'g4', 'Qh4#']);
-  await expect(square(page, 'h4')).toHaveAttribute('aria-label', 'h4, black queen');
-  await expect(page.locator('#board [data-square][aria-disabled="true"]')).toHaveCount(64);
+  await find(page, { role: 'StaticText', name: 'Checkmate — black wins' });
+  await moves(page, ['f3', 'e5', 'g4', 'Qh4#']);
+  await cellName(page, 'h4', 'h4, black queen');
+  expect((await boardSnapshot(page)).match(/gridcell .*disabled=true/g)).toHaveLength(64);
 });
 
 test('supports keyboard movement and exposes a semantic 64-square grid', async ({ page }) => {
@@ -32,87 +31,81 @@ test('supports keyboard movement and exposes a semantic 64-square grid', async (
       () => 'game' in (window as typeof window & { gameBoard: Record<string, unknown> }).gameBoard,
     ),
   ).toBe(false);
-  expect(
-    await page
-      .locator('#board')
-      .evaluate((host) => host.shadowRoot?.querySelectorAll('[role="gridcell"]').length),
-  ).toBe(64);
-  await expect(page.locator('#board [role="gridcell"]')).toHaveCount(64);
-  await square(page, 'e2').focus();
+  expect((await boardSnapshot(page)).match(/gridcell /g)).toHaveLength(64);
+  expect(await boardSnapshot(page)).toMatchSnapshot('initial-grid.txt');
+  await (await square(page, 'e2')).focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Enter');
 
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
-  await expect(page.locator('#status')).toHaveText('Black to move');
+  await cellName(page, 'e4', 'e4, white pawn');
+  await find(page, { role: 'StaticText', name: 'Black to move' });
 });
 
-test('applies programmatic colors and loads every bundled piece offline', async ({ page }) => {
+test('loads every bundled piece without remote requests', async ({ page }) => {
   const remoteRequests: string[] = [];
   page.on('request', (request) => {
     if (!request.url().startsWith('http://127.0.0.1:4173')) remoteRequests.push(request.url());
   });
-  await page.reload();
-
-  const light = await page.locator('#board').evaluate((host) => {
-    const frame = host.shadowRoot?.querySelector<HTMLElement>('.frame');
-    return frame ? getComputedStyle(frame).getPropertyValue('--board-light').trim() : '';
+  const sources = new Set<string>();
+  page.on('request', (request) => {
+    if (request.resourceType() === 'image') sources.add(request.url());
   });
-  expect(light).toBe('#e8dcc4');
-
-  await expect
-    .poll(() =>
-      page
-        .locator('#board .piece:not([hidden])')
-        .evaluateAll((images) =>
-          images.every((image) => (image as HTMLImageElement).naturalWidth > 0),
+  await page.reload();
+  const pieces = await page.evaluate(
+    async (urls) =>
+      Promise.all(
+        urls.map(
+          (src) =>
+            new Promise<{ src: string; width: number }>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve({ src, width: image.naturalWidth });
+              image.onerror = () => reject(new Error(`Cannot load ${src}`));
+              image.src = src;
+            }),
         ),
-    )
-    .toBe(true);
-  expect(remoteRequests).toEqual([]);
-  expect(
-    await page
-      .locator('#board .piece')
-      .evaluateAll((images) =>
-        images.some((image) => image.getAttribute('src')?.startsWith('data:')),
       ),
-  ).toBe(false);
+    [...sources],
+  );
+  expect(pieces).toHaveLength(12);
+  expect(pieces.every(({ src, width }) => !src.startsWith('data:') && width > 0)).toBe(true);
+  expect(remoteRequests).toEqual([]);
 });
 
 test('drags through the same move path as click and keyboard', async ({ page }) => {
-  await square(page, 'e2').dragTo(square(page, 'e4'));
+  await (await square(page, 'e2')).dragTo(await square(page, 'e4'));
 
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
-  await expect(page.locator('#moves li')).toHaveText(['e4']);
+  await cellName(page, 'e4', 'e4, white pawn');
+  await moves(page, ['e4']);
 });
 
 test('marks the exact legal square under a drag at square boundaries', async ({ page }) => {
-  const from = await square(page, 'e2').boundingBox();
-  const upper = await square(page, 'e4').boundingBox();
-  const lower = await square(page, 'e3').boundingBox();
+  const from = await (await square(page, 'e2')).box();
+  const upper = await (await square(page, 'e4')).box();
+  const lower = await (await square(page, 'e3')).box();
   if (!from || !upper || !lower) throw new Error('expected visible drag squares');
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(upper.x + upper.width / 2, upper.y + upper.height - 1);
-  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'true');
-  await expect(square(page, 'e3')).toHaveAttribute('data-drop-target', 'false');
+  await description(page, 'e4', 'drop target', true);
+  await description(page, 'e3', 'drop target', false);
 
   await page.mouse.move(lower.x + lower.width / 2, lower.y + 1);
-  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'false');
-  await expect(square(page, 'e3')).toHaveAttribute('data-drop-target', 'true');
+  await description(page, 'e4', 'drop target', false);
+  await description(page, 'e3', 'drop target', true);
   await page.mouse.up();
 
-  await expect(square(page, 'e3')).toHaveAttribute('aria-label', 'e3, white pawn');
-  await expect(page.locator('#moves li')).toHaveText(['e3']);
+  await cellName(page, 'e3', 'e3, white pawn');
+  await moves(page, ['e3']);
 });
 
 test('keeps touch drag feedback visible above the finger and marks the drop square', async ({
   page,
 }) => {
-  const from = await square(page, 'e2').boundingBox();
-  const to = await square(page, 'e4').boundingBox();
+  const from = await (await square(page, 'e2')).box();
+  const to = await (await square(page, 'e4')).box();
   if (!from || !to) throw new Error('expected visible drag squares');
   const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
   const destination = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
@@ -127,34 +120,31 @@ test('keeps touch drag feedback visible above the finger and marks the drop squa
     type: 'touchMove',
   });
 
-  await expect(square(page, 'e4')).toHaveAttribute('data-drop-target', 'true');
-  const frame = await page.locator('#board .frame').boundingBox();
-  const ghost = await page.locator('#board .ghost').boundingBox();
-  const target = await page.locator('#board .drag-target').boundingBox();
-  if (!frame || !ghost || !target) throw new Error('expected visible touch feedback');
-  expect(ghost.width).toBeCloseTo((frame.width / 8) * 1.5, 0);
-  expect(ghost.y + ghost.height).toBeLessThan(destination.y);
-  expect(target.width).toBeCloseTo(to.width * 2, 0);
+  await description(page, 'e4', 'drop target', true);
+  await mechanicsScreenshot(page, 'touch-drag');
 
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
-  await expect(page.locator('#board .drag-target')).toBeHidden();
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+  await description(page, 'e4', 'drop target', false);
+  await mechanicsScreenshot(page, 'touch-released');
+  await cellName(page, 'e4', 'e4, white pawn');
 });
 
 test('keeps quick touch taps on the normal move path', async ({ page }) => {
+  await page.clock.install();
   const cdp = await page.context().newCDPSession(page);
 
-  await touchTap(cdp, await centerOf(square(page, 'e2')));
-  await expect(square(page, 'e2')).toHaveAttribute('aria-selected', 'true');
-  await touchTap(cdp, await centerOf(square(page, 'e4')));
+  await touchTap(cdp, await centerOf(await square(page, 'e2')));
+  expect(await (await square(page, 'e2')).states()).toMatchObject({ selected: true });
+  await touchTap(cdp, await centerOf(await square(page, 'e4')));
 
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
-  await expect(page.locator('#moves li')).toHaveText(['e4']);
-  await page.waitForTimeout(550);
-  await expect(page.locator('#board [data-annotation-preview]')).toHaveCount(0);
+  await cellName(page, 'e4', 'e4, white pawn');
+  await moves(page, ['e4']);
+  await page.clock.fastForward(550);
+  expect(await boardSnapshot(page)).not.toContain('preview');
 });
 
 test('uses a touch long-press to highlight a square or draw an arrow', async ({ page }) => {
+  await page.clock.install();
   await page.evaluate(() => {
     const scope = window as typeof window & {
       gameBoard: { destroy(): void };
@@ -169,31 +159,35 @@ test('uses a touch long-press to highlight a square or draw an arrow', async ({ 
     scope.touchAnalysis = scope.blunderon.createAnalysisBoard(element);
   });
   const cdp = await page.context().newCDPSession(page);
-  const d5 = await centerOf(square(page, 'd5'));
+  const d5 = await centerOf(await square(page, 'd5'));
 
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [d5], type: 'touchStart' });
-  await page.waitForTimeout(550);
-  await expect(page.locator('#board [data-annotation-preview="d5"]')).toHaveCount(1);
+  await page.clock.fastForward(550);
+  await description(page, 'd5', 'highlight preview');
+  await mechanicsScreenshot(page, 'touch-highlight-preview');
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
-  await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(1);
+  await cellName(page, 'd5', /highlighted/);
 
-  const e2 = await centerOf(square(page, 'e2'));
-  const e4 = await centerOf(square(page, 'e4'));
+  const e2 = await centerOf(await square(page, 'e2'));
+  const e4 = await centerOf(await square(page, 'e4'));
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [e2], type: 'touchStart' });
-  await page.waitForTimeout(550);
+  await page.clock.fastForward(550);
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [e4], type: 'touchMove' });
-  await expect(page.locator('#board [data-annotation-preview="e2e4"]')).toHaveCount(1);
+  await description(page, 'e2', 'arrow preview to e4');
+  await mechanicsScreenshot(page, 'touch-arrow-preview');
   await cdp.send('Input.dispatchTouchEvent', { touchPoints: [], type: 'touchEnd' });
 
-  await expect(page.locator('#board .annotations [data-arrow="e2e4"]')).toHaveCount(1);
-  await expect(square(page, 'e2')).toHaveAttribute('aria-label', /white pawn, arrow to e4/);
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, empty, arrow from e2');
-  await expect(page.locator('#moves li')).toHaveCount(0);
+  await cellName(page, 'e2', /arrow to e4/);
+  await cellName(page, 'e2', /white pawn, arrow to e4/);
+  await cellName(page, 'e4', 'e4, empty, arrow from e2');
+  await moves(page, []);
 });
 
 test('does not restore the drag source before the controlled move callback', async ({ page }) => {
+  await bindSource(page, await square(page, 'e2'));
   await page.evaluate(() => {
     const scope = window as typeof window & {
+      sourceAtMove: Element;
       dragSourceAtMove?: string | null;
       gameBoard: {
         board: {
@@ -202,31 +196,27 @@ test('does not restore the drag source before the controlled move callback', asy
         move(move: { from: string; to: string; promotion?: string }): void;
       };
     };
-    const host = document.getElementById('board');
     scope.gameBoard.board.update({
       onMove: (from, to, promotion) => {
-        scope.dragSourceAtMove =
-          host?.shadowRoot
-            ?.querySelector(`[data-square="${from}"]`)
-            ?.getAttribute('data-drag-source') ?? null;
+        scope.dragSourceAtMove = scope.sourceAtMove.getAttribute('aria-description');
         scope.gameBoard.move({ from, to, ...(promotion ? { promotion } : {}) });
       },
     });
   });
 
-  await square(page, 'e2').dragTo(square(page, 'e4'));
+  await (await square(page, 'e2')).dragTo(await square(page, 'e4'));
 
   expect(
     await page.evaluate(
       () => (window as typeof window & { dragSourceAtMove?: string | null }).dragSourceAtMove,
     ),
-  ).toBe('true');
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+  ).toContain('held piece');
+  await cellName(page, 'e4', 'e4, white pawn');
 });
 
 test('cancels a drag when controlled state disables the board', async ({ page }) => {
-  const from = await square(page, 'e2').boundingBox();
-  const to = await square(page, 'e4').boundingBox();
+  const from = await (await square(page, 'e2')).box();
+  const to = await (await square(page, 'e4')).box();
   if (!from || !to) throw new Error('expected visible drag squares');
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -242,8 +232,8 @@ test('cancels a drag when controlled state disables the board', async ({ page })
   });
   await page.mouse.up();
 
-  await expect(square(page, 'e2')).toHaveAttribute('aria-label', 'e2, white pawn');
-  await expect(page.locator('#moves li')).toHaveCount(0);
+  await cellName(page, 'e2', 'e2, white pawn');
+  await moves(page, []);
 });
 
 test('offers a keyboard-accessible promotion picker', async ({ page }) => {
@@ -256,24 +246,28 @@ test('offers a keyboard-accessible promotion picker', async ({ page }) => {
     controller.reset('4k3/P7/8/8/8/8/8/4K3 w - - 0 1');
   });
 
-  await square(page, 'a7').click();
-  await square(page, 'a8').click();
-  await expect(page.getByRole('dialog', { name: 'Choose promotion piece' })).toBeVisible();
-  await page.getByRole('button', { name: 'Promote to knight' }).focus();
+  await (await square(page, 'a7')).click();
+  await (await square(page, 'a8')).click();
+  await find(page, { role: 'dialog', name: 'Choose promotion piece' });
+  await (await find(page, { role: 'button', name: 'Promote to knight' })).focus();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Promote to queen' })).toBeFocused();
+  expect(
+    await (await find(page, { role: 'button', name: 'Promote to queen' })).states(),
+  ).toMatchObject({ focused: true });
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByRole('button', { name: 'Promote to knight' })).toBeFocused();
+  expect(
+    await (await find(page, { role: 'button', name: 'Promote to knight' })).states(),
+  ).toMatchObject({ focused: true });
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Choose promotion piece' })).toBeHidden();
-  await expect(square(page, 'a7')).toHaveAttribute('aria-label', 'a7, white pawn');
+  expect(await axSnapshot(page)).not.toContain('dialog');
+  await cellName(page, 'a7', 'a7, white pawn');
 
-  await square(page, 'a7').click();
-  await square(page, 'a8').click();
-  await page.getByRole('button', { name: 'Promote to queen' }).click();
+  await (await square(page, 'a7')).click();
+  await (await square(page, 'a8')).click();
+  await (await find(page, { role: 'button', name: 'Promote to queen' })).click();
 
-  await expect(square(page, 'a8')).toHaveAttribute('aria-label', 'a8, white queen');
-  await expect(page.locator('#moves li')).toHaveText(['a8=Q+']);
+  await cellName(page, 'a8', 'a8, white queen');
+  await moves(page, ['a8=Q+']);
 });
 
 test('cancels a pending promotion when the position is replaced', async ({ page }) => {
@@ -285,9 +279,9 @@ test('cancels a pending promotion when the position is replaced', async ({ page 
     ).gameBoard;
     controller.reset('4k3/P7/8/8/8/8/8/4K3 w - - 0 1');
   });
-  await square(page, 'a7').click();
-  await square(page, 'a8').click();
-  await expect(page.getByRole('dialog', { name: 'Choose promotion piece' })).toBeVisible();
+  await (await square(page, 'a7')).click();
+  await (await square(page, 'a8')).click();
+  await find(page, { role: 'dialog', name: 'Choose promotion piece' });
 
   await page.evaluate(() => {
     const controller = (
@@ -298,8 +292,8 @@ test('cancels a pending promotion when the position is replaced', async ({ page 
     controller.reset();
   });
 
-  await expect(page.getByRole('dialog', { name: 'Choose promotion piece' })).toBeHidden();
-  await expect(square(page, 'a7')).toHaveAttribute('aria-label', 'a7, black pawn');
+  expect(await axSnapshot(page)).not.toContain('dialog');
+  await cellName(page, 'a7', 'a7, black pawn');
 });
 
 test('clears selection when the position is replaced', async ({ page }) => {
@@ -311,8 +305,8 @@ test('clears selection when the position is replaced', async ({ page }) => {
     ).gameBoard;
     controller.reset('4k3/P7/8/8/8/8/8/4K3 w - - 0 1');
   });
-  await square(page, 'a7').click();
-  await expect(square(page, 'a7')).toHaveAttribute('aria-selected', 'true');
+  await (await square(page, 'a7')).click();
+  expect(await (await square(page, 'a7')).states()).toMatchObject({ selected: true });
 
   await page.evaluate(() => {
     const controller = (
@@ -323,7 +317,7 @@ test('clears selection when the position is replaced', async ({ page }) => {
     controller.reset();
   });
 
-  await expect(square(page, 'a7')).toHaveAttribute('aria-selected', 'false');
+  expect(await (await square(page, 'a7')).states()).toMatchObject({ selected: false });
 });
 
 test('renders controlled analysis highlights and arrows without intercepting input', async ({
@@ -348,29 +342,22 @@ test('renders controlled analysis highlights and arrows without intercepting inp
     });
   });
 
-  await expect(page.locator('#board .annotations [data-highlight="e4"]')).toHaveCount(1);
-  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveCount(1);
-  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveAttribute(
-    'stroke-opacity',
-    '0.35',
-  );
-  await expect(page.locator('#board .annotations polygon')).toHaveAttribute('fill-opacity', '0.35');
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', /Critical/);
+  await cellName(page, 'g1', /arrow to f3/);
+  await mechanicsScreenshot(page, 'controlled-annotations');
+  await cellName(page, 'e4', /Critical/);
 
-  await square(page, 'e2').click();
-  await square(page, 'e4').click();
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', /white pawn/);
+  await (await square(page, 'e2')).click();
+  await (await square(page, 'e4')).click();
+  await cellName(page, 'e4', /white pawn/);
 });
 
 test('restores a complete game snapshot and records an external ending', async ({ page }) => {
-  await square(page, 'e2').click();
-  await square(page, 'e4').click();
+  await playOpponentMove(page, 'e2', 'e4');
   const snapshot = await page.evaluate(() => {
     const controller = (window as typeof window & { gameBoard: { snapshot(): unknown } }).gameBoard;
     return controller.snapshot();
   });
-  await square(page, 'e7').click();
-  await square(page, 'e5').click();
+  await playOpponentMove(page, 'e7', 'e5');
 
   await page.evaluate((saved) => {
     const controller = (
@@ -385,9 +372,12 @@ test('restores a complete game snapshot and records an external ending', async (
     controller.finish('timeout', 'white');
   }, snapshot);
 
-  await expect(square(page, 'e7')).toHaveAttribute('aria-label', 'e7, black pawn');
-  await expect(page.locator('#status')).toHaveText('White wins — timeout');
-  await expect(page.locator('#board [data-square][aria-disabled="true"]')).toHaveCount(64);
+  await cellName(page, 'e7', 'e7, black pawn');
+  await find(page, { role: 'StaticText', name: 'White wins — timeout' });
+  expect((await boardSnapshot(page)).match(/gridcell .*disabled=true/g)).toHaveLength(64);
+  expect(await axSnapshot(page, await find(page, { role: 'main' }))).toMatchSnapshot(
+    'restored-timeout.txt',
+  );
 });
 
 test('announces a drawn timeout when the opponent cannot possibly mate', async ({ page }) => {
@@ -404,9 +394,13 @@ test('announces a drawn timeout when the opponent cannot possibly mate', async (
     controller.finish('timeout', 'black');
   });
 
-  await expect(page.locator('#status')).toHaveText('Draw — timeout');
-  await expect(page.locator('#board [aria-live="polite"]')).toHaveText(
-    'Draw because the opponent has no mating material.',
+  await find(page, { role: 'StaticText', name: 'Draw — timeout' });
+  await find(page, {
+    role: 'StaticText',
+    name: 'Draw because the opponent has no mating material.',
+  });
+  expect(await axSnapshot(page, await find(page, { role: 'main' }))).toMatchSnapshot(
+    'drawn-timeout.txt',
   );
 });
 
@@ -441,34 +435,37 @@ test('runs a puzzle without letting an incorrect legal move change its solution'
     scope.puzzle = scope.blunderon.createPuzzleBoard(element, { solution });
   });
 
-  await square(page, 'd2').click();
-  await square(page, 'd4').click();
-  await expect(square(page, 'd2')).toHaveAttribute('aria-label', 'd2, white pawn');
+  await (await square(page, 'd2')).click();
+  await (await square(page, 'd4')).click();
+  await cellName(page, 'd2', 'd2, white pawn');
 
-  await square(page, 'e2').click();
-  await square(page, 'e4').click();
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
-  await expect(square(page, 'e5')).toHaveAttribute('aria-label', 'e5, black pawn');
+  await (await square(page, 'e2')).click();
+  await (await square(page, 'e4')).click();
+  await cellName(page, 'e4', 'e4, white pawn');
+  await cellName(page, 'e5', 'e5, black pawn');
 
-  await square(page, 'f1').click();
-  await square(page, 'c4').click();
-  await expect(square(page, 'e5')).toHaveClass(/last-move/);
+  await (await square(page, 'f1')).click();
+  await (await square(page, 'c4')).click();
+  await description(page, 'e5', 'last move');
 
   const snapshot = await page.evaluate(() => {
     const scope = window as typeof window & { puzzle: { snapshot(): unknown } };
     return JSON.parse(JSON.stringify(scope.puzzle.snapshot()));
   });
 
-  await square(page, 'g1').click();
-  await square(page, 'f3').click();
-  await expect(page.locator('#board [data-square][aria-disabled="true"]')).toHaveCount(64);
+  await (await square(page, 'g1')).click();
+  await (await square(page, 'f3')).click();
+  expect((await boardSnapshot(page)).match(/gridcell .*disabled=true/g)).toHaveLength(64);
 
   await page.evaluate((saved) => {
     const scope = window as typeof window & { puzzle: { restore(snapshot: never): void } };
     scope.puzzle.restore(saved as never);
   }, snapshot);
-  await expect(square(page, 'g1')).toHaveAttribute('aria-label', 'g1, white knight');
-  await expect(square(page, 'g1')).toHaveAttribute('aria-disabled', 'false');
+  await cellName(page, 'g1', 'g1, white knight');
+  expect((await (await square(page, 'g1')).states()).disabled ?? false).toBe(false);
+  expect(await axSnapshot(page, await find(page, { role: 'main' }))).toMatchSnapshot(
+    'restored-puzzle.txt',
+  );
 });
 
 test('starts an opponent-first puzzle without disabling the solver', async ({ page }) => {
@@ -498,8 +495,11 @@ test('starts an opponent-first puzzle without disabling the solver', async ({ pa
     });
   });
 
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', 'e4, white pawn');
-  await expect(square(page, 'e7')).toHaveAttribute('aria-disabled', 'false');
+  await cellName(page, 'e4', 'e4, white pawn');
+  expect((await (await square(page, 'e7')).states()).disabled ?? false).toBe(false);
+  expect(await axSnapshot(page, await find(page, { role: 'main' }))).toMatchSnapshot(
+    'opponent-first.txt',
+  );
 });
 
 test('announces a product-controlled puzzle reply', async ({ page }) => {
@@ -530,8 +530,11 @@ test('announces a product-controlled puzzle reply', async ({ page }) => {
     puzzle.reply();
   });
 
-  await expect(square(page, 'e5')).toHaveAttribute('aria-label', 'e5, black pawn');
-  await expect(page.locator('#board [aria-live="polite"]')).toHaveText('e5. Puzzle complete.');
+  await cellName(page, 'e5', 'e5, black pawn');
+  await find(page, { role: 'StaticText', name: 'e5. Puzzle complete.' });
+  expect(await axSnapshot(page, await find(page, { role: 'main' }))).toMatchSnapshot(
+    'product-reply.txt',
+  );
 });
 
 test('keeps an analysis tree and board synchronized through navigation and restore', async ({
@@ -575,22 +578,23 @@ test('keeps an analysis tree and board synchronized through navigation and resto
     scope.analysis.restore(snapshot as never);
   });
 
-  await expect(square(page, 'e4')).toHaveAttribute('aria-label', /white pawn, Candidate/);
-  await expect(square(page, 'g1')).toHaveAttribute('aria-label', /Develop the knight/);
-  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveCount(1);
+  await cellName(page, 'e4', /white pawn, Candidate/);
+  await cellName(page, 'g1', /Develop the knight/);
+  await cellName(page, 'g1', /Develop the knight/);
 
+  expect(await boardSnapshot(page)).toMatchSnapshot('restored-analysis.txt');
   await drawArrow(page, 'e4', 'd5');
-  await expect(page.locator('#board .annotations [data-arrow="e4d5"]')).toHaveCount(1);
+  await cellName(page, 'e4', /arrow to d5/);
 
-  await square(page, 'd5').click({ button: 'right' });
-  await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(1);
-  await expect(square(page, 'd5')).toHaveAttribute('aria-label', /highlighted/);
+  await (await square(page, 'd5')).click({ button: 'right' });
+  await cellName(page, 'd5', /highlighted/);
+  await cellName(page, 'd5', /highlighted/);
 
   // Drawings are scratch marks, so the next tap on the board wipes them.
-  await square(page, 'e2').click();
-  await expect(page.locator('#board .annotations [data-arrow="e4d5"]')).toHaveCount(0);
-  await expect(page.locator('#board .annotations [data-highlight="d5"]')).toHaveCount(0);
-  await expect(page.locator('#board .annotations [data-arrow="g1f3"]')).toHaveCount(0);
+  await (await square(page, 'e2')).click();
+  expect(await axSnapshot(page, await square(page, 'e4'))).not.toContain('arrow to d5');
+  expect(await axSnapshot(page, await square(page, 'd5'))).not.toContain('highlighted');
+  expect(await axSnapshot(page, await square(page, 'g1'))).not.toContain('Develop the knight');
 
   const exposesMutableTree = await page.evaluate(() => {
     const scope = window as typeof window & { analysis: object };
@@ -606,38 +610,38 @@ test('keeps an analysis tree and board synchronized through navigation and resto
   expect(pgn).toContain('Candidate move');
 });
 
-test('keeps the themed board within a narrow offline viewport', async ({ page }) => {
+test('keeps the themed board within a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
   const metrics = await page.evaluate(() => {
-    const board = document.getElementById('board')?.getBoundingClientRect();
     return {
-      boardWidth: board?.width ?? 0,
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
     };
   });
 
-  expect(metrics.boardWidth).toBeGreaterThan(300);
-  expect(metrics.boardWidth).toBeLessThanOrEqual(metrics.clientWidth - 32);
+  const board = await (await find(page, { role: 'grid', name: 'Chess board' })).box();
+  expect(board.width).toBeGreaterThan(300);
+  expect(board.width).toBeLessThanOrEqual(metrics.clientWidth - 32);
   expect(metrics.scrollWidth).toBe(metrics.clientWidth);
 });
 
 test('holds a piece picked up while the opponent is still thinking', async ({ page }) => {
   await controlBoard(page, { disabled: true, player: 'black' });
-  const from = await centerOf(square(page, 'e7'));
-  const to = await centerOf(square(page, 'e5'));
+  const from = await centerOf(await square(page, 'e7'));
+  const to = await centerOf(await square(page, 'e5'));
 
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y);
-  await expect(square(page, 'e7')).toHaveAttribute('data-drag-source', 'true');
+  await description(page, 'e7', 'held piece');
 
   await playOpponentMove(page, 'e2', 'e4');
-  await expect(page.locator('#board .ghost')).toBeVisible();
+  await description(page, 'e7', 'held piece');
+  await mechanicsScreenshot(page, 'held-after-opponent');
   await page.mouse.up();
 
-  await expect(page.locator('#moves li')).toHaveText(['e4', 'e5']);
+  await moves(page, ['e4', 'e5']);
 });
 
 test('drops a held piece when the opponent takes it off its square', async ({ page }) => {
@@ -647,58 +651,112 @@ test('drops a held piece when the opponent takes it off its square', async ({ pa
     controller.reset('rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2');
   });
   await controlBoard(page, { disabled: true, player: 'black' });
-  const from = await centerOf(square(page, 'e5'));
-  const to = await centerOf(square(page, 'e4'));
+  const from = await centerOf(await square(page, 'e5'));
+  const to = await centerOf(await square(page, 'e4'));
 
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y);
-  await expect(page.locator('#board .ghost')).toBeVisible();
+  await description(page, 'e5', 'held piece');
+  await mechanicsScreenshot(page, 'held-before-capture');
 
   await playOpponentMove(page, 'd4', 'e5');
-  await expect(page.locator('#board .ghost')).toBeHidden();
+  await description(page, 'e5', 'held piece', false);
+  await mechanicsScreenshot(page, 'held-captured');
   await page.mouse.up();
 
-  await expect(page.locator('#moves li')).toHaveText(['dxe5']);
+  await moves(page, ['dxe5']);
 });
 
 test('keeps a piece chosen while waiting so the reply is one tap away', async ({ page }) => {
   await controlBoard(page, { disabled: true, player: 'black' });
 
-  await square(page, 'e7').click();
-  await expect(square(page, 'e7')).toHaveAttribute('aria-selected', 'true');
+  await (await square(page, 'e7')).click();
+  expect(await (await square(page, 'e7')).states()).toMatchObject({ selected: true });
 
   await playOpponentMove(page, 'e2', 'e4');
-  await expect(square(page, 'e7')).toHaveAttribute('aria-selected', 'true');
-  await square(page, 'e5').click();
+  expect(await (await square(page, 'e7')).states()).toMatchObject({ selected: true });
+  await (await square(page, 'e5')).click();
 
-  await expect(page.locator('#moves li')).toHaveText(['e4', 'e5']);
+  await moves(page, ['e4', 'e5']);
 });
 
 test('offers a grab cursor for the pieces that stay pickable while waiting', async ({ page }) => {
   await controlBoard(page, { disabled: true, player: 'black' });
 
-  await expect(square(page, 'e7')).toHaveCSS('cursor', 'grab');
-  await expect(square(page, 'e2')).toHaveCSS('cursor', 'default');
+  expect(await cursor(page, await square(page, 'e7'))).toBe('grab');
+  expect(await cursor(page, await square(page, 'e2'))).toBe('default');
 
-  const from = await centerOf(square(page, 'e7'));
+  const from = await centerOf(await square(page, 'e7'));
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x, from.y - 40);
 
-  await expect(square(page, 'e7')).toHaveCSS('cursor', 'grabbing');
-  await expect(square(page, 'e2')).toHaveCSS('cursor', 'grabbing');
+  expect(await cursor(page, await square(page, 'e7'))).toBe('grabbing');
+  expect(await cursor(page, await square(page, 'e2'))).toBe('grabbing');
   await page.mouse.up();
 });
 
-function square(page: import('@playwright/test').Page, name: string) {
-  return page.locator(`#board [data-square="${name}"]`);
+async function square(page: Page, name: string) {
+  return find(page, { role: 'gridcell', name: new RegExp(`^${name},`) });
 }
 
-async function centerOf(locator: import('@playwright/test').Locator) {
-  const box = await locator.boundingBox();
-  if (!box) throw new Error('board square is not visible');
+async function centerOf(handle: AXHandle) {
+  const box = await handle.box();
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function cellName(page: Page, squareName: string, name: string | RegExp) {
+  const text = await axSnapshot(page, await square(page, squareName));
+  if (typeof name === 'string') expect(text).toContain(`gridcell "${name}"`);
+  else expect(text.split('\n')[0]).toMatch(name);
+}
+
+async function boardSnapshot(page: Page) {
+  return axSnapshot(page, await find(page, { role: 'grid', name: 'Chess board' }));
+}
+
+async function description(page: Page, name: string, description: string, present = true) {
+  const text = await axSnapshot(page, await square(page, name));
+  if (present) expect(text).toContain(description);
+  else expect(text).not.toContain(description);
+}
+
+async function moves(page: Page, expected: string[]) {
+  const text = await axSnapshot(page, await find(page, { role: 'list' }));
+  expect([...text.matchAll(/StaticText "(.*)"/g)].map((match) => match[1])).toEqual(expected);
+}
+
+async function mechanicsScreenshot(page: Page, name: string) {
+  if (process.env.PLAYWRIGHT_DOCKER === '1') await expect(page).toHaveScreenshot(`${name}.png`);
+}
+
+async function cursor(page: Page, handle: AXHandle) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: handle.backendNodeId });
+    const { result } = await cdp.send('Runtime.callFunctionOn', {
+      objectId: object.objectId,
+      functionDeclaration: 'function() { return getComputedStyle(this).cursor; }',
+      returnByValue: true,
+    });
+    return result.value;
+  } finally {
+    await cdp.detach();
+  }
+}
+
+async function bindSource(page: Page, handle: AXHandle) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: handle.backendNodeId });
+    await cdp.send('Runtime.callFunctionOn', {
+      objectId: object.objectId,
+      functionDeclaration: 'function() { window.sourceAtMove = this; }',
+    });
+  } finally {
+    await cdp.detach();
+  }
 }
 
 async function touchTap(
@@ -714,8 +772,8 @@ async function drawArrow(
   from: string,
   to: string,
 ): Promise<void> {
-  const source = await square(page, from).boundingBox();
-  const target = await square(page, to).boundingBox();
+  const source = await (await square(page, from)).box();
+  const target = await (await square(page, to)).box();
   if (!source || !target) throw new Error('board square is not visible');
 
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);

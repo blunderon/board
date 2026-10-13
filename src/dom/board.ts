@@ -12,6 +12,7 @@ import {
   squareShade,
 } from '../core/index.js';
 import type { BoardArrow, Color, Piece, Promotion, Square, SquareHighlight } from '../shared.js';
+import { describeSquareState } from './description.js';
 import { BOARD_STYLES } from './styles.js';
 import { type BoardTheme, mergeTheme, type ThemeOptions } from './theme.js';
 
@@ -246,6 +247,17 @@ class DomBoard implements BoardController {
         labels.length > 0 ? `${label}, ${labels.join(', ')}` : label,
       );
       button.setAttribute('aria-selected', String(selected === square));
+      const description = describeSquareState(square, {
+        lastMove: this.state.lastMove,
+        checkedKing,
+        legalDestinations: targets,
+        heldPiece: this.drag.dragging ? this.drag.from : null,
+        dropTarget: this.dragTarget,
+        annotationFrom: this.annotationFrom,
+        annotationTo: this.annotationTo,
+      });
+      if (description) button.setAttribute('aria-description', description);
+      else button.removeAttribute('aria-description');
       button.tabIndex = square === this.focusSquare ? 0 : -1;
       button.setAttribute('aria-disabled', String(this.state.disabled && !this.pickable(square)));
       button.dataset.empty = String(piece === null);
@@ -421,6 +433,7 @@ class DomBoard implements BoardController {
       event.preventDefault();
       this.annotationFrom = square;
       this.annotationTo = square;
+      this.patch();
       (event.target as Element).setPointerCapture?.(event.pointerId);
       return;
     }
@@ -484,7 +497,7 @@ class DomBoard implements BoardController {
       event.preventDefault();
       const hit = this.shadow.elementFromPoint(event.clientX, event.clientY);
       this.annotationTo = squareFromElement(hit);
-      this.renderAnnotations();
+      this.patch();
       return;
     }
     if (!this.drag.moved({ x: event.clientX, y: event.clientY })) return;
@@ -517,7 +530,7 @@ class DomBoard implements BoardController {
           from === to ? { type: 'highlight', square: from } : { type: 'arrow', from, to },
         );
       }
-      this.renderAnnotations();
+      this.patch();
       return;
     }
 
